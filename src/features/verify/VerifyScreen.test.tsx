@@ -31,6 +31,7 @@ const config: AppConfig = {
     defaultModel: "gpt-5-codex",
     defaultReasoningEffort: "",
     claudeCode: { baseUrl: CLAUDE_BASE_URL, defaultModel: "claude-sonnet-5" },
+    codexLargeContext: { enabled: false, contextWindow: 372000, autoCompactTokenLimit: 300000 },
   },
   tools: [
     {

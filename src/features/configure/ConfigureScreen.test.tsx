@@ -8,6 +8,8 @@ import type {
   CodexConfigTemplate,
   ConfigGuide,
   ConnectivityReport,
+  ContextStrategy,
+  ContextStrategyInfo,
   GatewayProbeRequest,
   GuideStep,
   KeyValidation,
@@ -85,21 +87,63 @@ function configStatus(overrides: Partial<CodexConfigStatus> = {}): CodexConfigSt
     currentRedacted: null,
     backups: [],
     matchesTemplate: null,
+    liveContext: null,
     ...overrides,
   };
 }
 
-/** Mirrors `guide::codex_config_template_response`: the toml plus the two limits it embeds. */
-function codexTemplate(model: string, scope: string): CodexConfigTemplate {
+/** Mirrors `guide::context_strategies` for the shipped preset (OpenAI's defaults only). */
+const OPENAI_DEFAULT: ContextStrategyInfo = {
+  strategy: "openai_default",
+  contextWindow: 272000,
+  autoCompactTokenLimit: 244800,
+  usableContextWindow: 258400,
+  writesKeys: false,
+};
+
+/** Mirrors the large window a preset with `codexLargeContext.enabled` adds. */
+const LARGE_WINDOW: ContextStrategyInfo = {
+  strategy: "large_window",
+  contextWindow: 372000,
+  autoCompactTokenLimit: 300000,
+  usableContextWindow: 353400,
+  writesKeys: true,
+};
+
+/**
+ * Mirrors `guide::codex_config_template_response`: the toml for the strategy actually rendered
+ * (OpenAI's defaults when the requested one is not on offer) plus every strategy's numbers.
+ */
+function codexTemplate(
+  model: string,
+  requested: ContextStrategy,
+  offered: ContextStrategyInfo[] = [OPENAI_DEFAULT],
+): CodexConfigTemplate {
+  const rendered = offered.find((s) => s.strategy === requested) ?? OPENAI_DEFAULT;
+  const contextLines = rendered.writesKeys
+    ? [
+        `model_context_window = ${rendered.contextWindow}`,
+        `model_auto_compact_token_limit = ${rendered.autoCompactTokenLimit}`,
+        `model_auto_compact_token_limit_scope = "total"`,
+      ]
+    : [];
   return {
-    toml: [
-      `model = "${model}"`,
-      `model_auto_compact_token_limit_scope = "${scope}"`,
-      `experimental_bearer_token = "<API-KEY>"`,
-    ].join("\n"),
-    modelContextWindow: 372000,
-    modelAutoCompactTokenLimit: 300000,
+    toml: [`model = "${model}"`, ...contextLines, `experimental_bearer_token = "<API-KEY>"`].join(
+      "\n",
+    ),
+    contextStrategy: rendered.strategy,
+    contextStrategies: offered,
+    longContextThreshold: 272000,
   };
+}
+
+/** The request the card sent with its last `get_codex_config_template` call. */
+function lastTemplateRequest(): { model: string; contextStrategy: ContextStrategy } {
+  const calls = mockInvoke.mock.calls.filter(([cmd]) => cmd === "get_codex_config_template");
+  const args = calls.at(-1)?.[1] as {
+    request: { model: string; contextStrategy: ContextStrategy };
+  };
+  return args.request;
 }
 
 /** Number badges of the visible steps, in order. */
@@ -196,8 +240,8 @@ describe("ConfigureScreen", () => {
         models: ["gpt-5", "gpt-5-codex"],
       }),
       get_codex_config_template: (args) => {
-        const req = args?.request as { model: string; autoCompactScope: string };
-        return codexTemplate(req.model, req.autoCompactScope);
+        const req = args?.request as { model: string; contextStrategy: ContextStrategy };
+        return codexTemplate(req.model, req.contextStrategy);
       },
       preview_cc_switch_import: () => ({ displayUrl: MASKED_LINK, app: "codex" }),
       open_cc_switch_import: () => undefined,
@@ -364,28 +408,38 @@ describe("ConfigureScreen", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
 
-  it("offers the editable codex config template with scope choice and key substitution", async () => {
+  it("explains OpenAI's default context strategy and substitutes the key in the template", async () => {
     render(<ConfigureScreen />);
     await screen.findByText("Open CC Switch");
     const textarea = screen.getByTestId<HTMLTextAreaElement>("config-toml-input");
-    await waitFor(() => expect(textarea.value).toContain("body_after_prefix"));
-    expect(textarea.value).toContain('model = "gpt-5-codex"');
+    await waitFor(() => expect(textarea.value).toContain('model = "gpt-5-codex"'));
     expect(textarea.value).toContain("<API-KEY>");
+    // OpenAI's defaults: the template writes no context key at all
+    expect(textarea.value).not.toContain("model_context_window");
+    expect(textarea.value).not.toContain("model_auto_compact_token_limit");
+    expect(lastTemplateRequest().contextStrategy).toBe("openai_default");
 
-    // the card copy quotes the live model and the limits from the response — never hard-coded
-    expect(screen.getByTestId("codex-config-card")).toHaveTextContent(
-      "auto-compaction for gpt-5-codex.",
+    // the card copy quotes the live model and the numbers from the response — never hard-coded
+    const card = screen.getByTestId("codex-config-card");
+    expect(card).toHaveTextContent("the priority tier for gpt-5-codex,");
+    const explanation = screen.getByTestId("config-strategy-openai_default-explanation");
+    expect(explanation).toHaveTextContent("a 272K context window");
+    expect(explanation).toHaveTextContent("automatic compaction at about 245K");
+    expect(explanation).toHaveTextContent("compaction at 258K at the latest");
+    expect(explanation).toHaveTextContent("Requests normally stay below 272K");
+    expect(explanation).toHaveTextContent("the defaults OpenAI set for the model");
+    // only one strategy on offer: no radio list, and nothing about the old scope choice
+    expect(screen.queryByTestId("config-context-choice")).toBeNull();
+    expect(within(screen.getByTestId("config-context")).queryByRole("radio")).toBeNull();
+    expect(card).not.toHaveTextContent(/body_after_prefix|cached prefix/);
+    // the habits, the CC Switch checkboxes to leave alone, and the detailed help
+    expect(screen.getByTestId("config-context-tips")).toHaveTextContent("/compact");
+    expect(screen.getByTestId("config-context-cc-switch")).toHaveTextContent(
+      "“1M Context Window” and “Enable remote compaction” unticked",
     );
-    expect(screen.getByTestId("config-scope-hint")).toHaveTextContent(
-      "what the 300000 auto-compaction threshold counts",
-    );
-    expect(screen.getByTestId("config-scope-body_after_prefix-explanation")).toHaveTextContent(
-      "the 372k context",
-    );
-
-    // switching the accounting scope regenerates the template
-    fireEvent.click(screen.getByTestId("config-scope-total"));
-    await waitFor(() => expect(textarea.value).toContain('"total"'));
+    expect(
+      within(screen.getByTestId("config-context")).getByRole("button", { name: /How it works/ }),
+    ).toHaveAttribute("data-help-section", "context-compaction");
 
     // copying substitutes the real key for the placeholder; the screen never shows it
     fireEvent.change(await keyInput(), { target: { value: GOOD_KEY } });
@@ -396,21 +450,202 @@ describe("ConfigureScreen", () => {
     expect(copiedText).not.toContain("<API-KEY>");
     expect(textarea.value).toContain("<API-KEY>");
     expect(textarea.value).not.toContain(GOOD_KEY);
+  });
+
+  it("offers the large window only when the preset does, and freezes manual edits", async () => {
+    setInvokeHandlers({
+      get_codex_config_template: (args) => {
+        const req = args?.request as { model: string; contextStrategy: ContextStrategy };
+        return codexTemplate(req.model, req.contextStrategy, [OPENAI_DEFAULT, LARGE_WINDOW]);
+      },
+    });
+    render(<ConfigureScreen />);
+    await screen.findByText("Open CC Switch");
+    const textarea = screen.getByTestId<HTMLTextAreaElement>("config-toml-input");
+    await waitFor(() => expect(textarea.value).toContain('model = "gpt-5-codex"'));
+
+    // two strategies: a radio list, recommended one preselected
+    const choice = await screen.findByTestId("config-context-choice");
+    expect(within(choice).getAllByRole("radio")).toHaveLength(2);
+    expect(screen.getByTestId<HTMLInputElement>("config-strategy-openai_default").checked).toBe(
+      true,
+    );
+    expect(screen.getByTestId("config-strategy-large_window-explanation")).toHaveTextContent(
+      "a 372K context window with automatic compaction at 300K (scope total), and compaction at 353K at the latest",
+    );
+    expect(textarea.value).not.toContain("model_context_window");
+
+    // choosing the large window regenerates the template with its three keys
+    fireEvent.click(screen.getByTestId("config-strategy-large_window"));
+    await waitFor(() => expect(textarea.value).toContain("model_context_window = 372000"));
+    expect(textarea.value).toContain("model_auto_compact_token_limit = 300000");
+    expect(textarea.value).toContain('model_auto_compact_token_limit_scope = "total"');
+    expect(lastTemplateRequest().contextStrategy).toBe("large_window");
 
     // manual edits freeze regeneration until the template is restored
     fireEvent.change(textarea, {
-      target: { value: `${textarea.value}\nmodel_auto_compact_token_limit = 100000` },
+      target: { value: `${textarea.value}\ntool_output_token_limit = 8000` },
     });
-    fireEvent.click(screen.getByTestId("config-scope-body_after_prefix"));
+    fireEvent.click(screen.getByTestId("config-strategy-openai_default"));
     await new Promise((resolve) => setTimeout(resolve, 400));
-    expect(textarea.value).toContain("model_auto_compact_token_limit = 100000");
+    expect(textarea.value).toContain("tool_output_token_limit = 8000");
+    expect(textarea.value).toContain("model_context_window = 372000");
     expect(screen.getByTestId("config-toml-edited")).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId("config-toml-restore"));
-    await waitFor(() =>
-      expect(textarea.value).not.toContain("model_auto_compact_token_limit = 100000"),
+    await waitFor(() => expect(textarea.value).not.toContain("tool_output_token_limit = 8000"));
+    expect(textarea.value).not.toContain("model_context_window");
+  });
+
+  it("follows the core when it does not offer the requested strategy", async () => {
+    // a preset that offered the large window once, then IT switched it off again: the core
+    // answers with OpenAI's defaults, and the radio must not keep claiming the large window
+    let offered: ContextStrategyInfo[] = [OPENAI_DEFAULT, LARGE_WINDOW];
+    setInvokeHandlers({
+      get_codex_config_template: (args) => {
+        const req = args?.request as { model: string; contextStrategy: ContextStrategy };
+        return codexTemplate(req.model, req.contextStrategy, offered);
+      },
+    });
+    render(<ConfigureScreen />);
+    await screen.findByText("Open CC Switch");
+    fireEvent.click(await screen.findByTestId("config-strategy-large_window"));
+    const textarea = screen.getByTestId<HTMLTextAreaElement>("config-toml-input");
+    await waitFor(() => expect(textarea.value).toContain("model_context_window = 372000"));
+
+    offered = [OPENAI_DEFAULT];
+    fireEvent.click(screen.getByTestId("edit-model"));
+    fireEvent.change(screen.getByTestId("input-model"), { target: { value: "gpt-6-astra" } });
+    await waitFor(() => expect(textarea.value).toContain('model = "gpt-6-astra"'));
+    expect(textarea.value).not.toContain("model_context_window");
+    expect(screen.queryByTestId("config-context-choice")).toBeNull();
+    await waitFor(() => expect(lastTemplateRequest().contextStrategy).toBe("openai_default"));
+  });
+
+  it("points out context keys in the live file that applying would change", async () => {
+    setInvokeHandlers({
+      codex_config_status: () =>
+        configStatus({
+          exists: true,
+          matchesTemplate: false,
+          // what earlier versions of this app wrote
+          liveContext: {
+            modelContextWindow: 372000,
+            modelAutoCompactTokenLimit: 300000,
+            modelAutoCompactTokenLimitScope: "body_after_prefix",
+          },
+        }),
+    });
+    render(<ConfigureScreen />);
+    await screen.findByText("Open CC Switch");
+    const hint = await screen.findByTestId("config-live-context");
+    expect(hint).toHaveTextContent(
+      'currently says: model_context_window = 372000 · model_auto_compact_token_limit = 300000 · model_auto_compact_token_limit_scope = "body_after_prefix". Applying removes these lines',
     );
-    expect(textarea.value).toContain("body_after_prefix");
+
+    // after a hand edit the strategy no longer describes what Apply writes: no claim at all
+    const textarea = screen.getByTestId<HTMLTextAreaElement>("config-toml-input");
+    fireEvent.change(textarea, {
+      target: { value: `model_context_window = 372000\n${textarea.value}` },
+    });
+    await waitFor(() => expect(screen.queryByTestId("config-live-context")).toBeNull());
+  });
+
+  it("says the large window replaces differing keys and stays quiet when they already match", async () => {
+    let live = {
+      modelContextWindow: 372000,
+      modelAutoCompactTokenLimit: 300000,
+      modelAutoCompactTokenLimitScope: "body_after_prefix",
+    };
+    setInvokeHandlers({
+      get_codex_config_template: (args) => {
+        const req = args?.request as { model: string; contextStrategy: ContextStrategy };
+        return codexTemplate(req.model, req.contextStrategy, [OPENAI_DEFAULT, LARGE_WINDOW]);
+      },
+      codex_config_status: () =>
+        configStatus({ exists: true, matchesTemplate: false, liveContext: live }),
+    });
+    render(<ConfigureScreen />);
+    await screen.findByText("Open CC Switch");
+    expect(await screen.findByTestId("config-live-context")).toHaveTextContent(
+      "Applying removes these lines",
+    );
+
+    fireEvent.click(screen.getByTestId("config-strategy-large_window"));
+    await waitFor(() =>
+      expect(screen.getByTestId("config-live-context")).toHaveTextContent(
+        "Applying replaces them with the large-window settings",
+      ),
+    );
+
+    // the live file already has exactly the large window's keys: nothing to point out
+    live = { ...live, modelAutoCompactTokenLimitScope: "total" };
+    fireEvent.change(await keyInput(), { target: { value: GOOD_KEY } });
+    await waitFor(() => expect(screen.queryByTestId("config-live-context")).toBeNull());
+  });
+
+  it("drops the hint once the file matches the template", async () => {
+    setInvokeHandlers({
+      codex_config_status: () =>
+        configStatus({
+          exists: true,
+          matchesTemplate: true,
+          liveContext: {
+            modelContextWindow: 400000,
+            modelAutoCompactTokenLimit: null,
+            modelAutoCompactTokenLimitScope: null,
+          },
+        }),
+    });
+    render(<ConfigureScreen />);
+    await screen.findByText("Open CC Switch");
+    expect(await screen.findByTestId("config-status")).toHaveTextContent("already the latest");
+    expect(screen.queryByTestId("config-live-context")).toBeNull();
+  });
+
+  it("keeps the user's strategy click when an older template response lands after it", async () => {
+    let hold = false;
+    let release: () => void = () => undefined;
+    setInvokeHandlers({
+      get_codex_config_template: (args) => {
+        const req = args?.request as { model: string; contextStrategy: ContextStrategy };
+        const response = codexTemplate(req.model, req.contextStrategy, [
+          OPENAI_DEFAULT,
+          LARGE_WINDOW,
+        ]);
+        if (!hold) return response;
+        return new Promise<CodexConfigTemplate>((resolve) => {
+          release = () => resolve(response);
+        });
+      },
+    });
+    render(<ConfigureScreen />);
+    await screen.findByText("Open CC Switch");
+    const large = await screen.findByTestId<HTMLInputElement>("config-strategy-large_window");
+
+    // a model change sends a new (openai_default) request, which is held in flight …
+    hold = true;
+    fireEvent.click(screen.getByTestId("edit-model"));
+    fireEvent.change(screen.getByTestId("input-model"), { target: { value: "gpt-6-astra" } });
+    await waitFor(() => expect(lastTemplateRequest().model).toBe("gpt-6-astra"));
+    expect(lastTemplateRequest().contextStrategy).toBe("openai_default");
+
+    // … the user picks the large window while it is pending, then the old response lands
+    hold = false;
+    fireEvent.click(large);
+    await act(async () => {
+      release();
+      await Promise.resolve();
+    });
+    expect(screen.getByTestId<HTMLInputElement>("config-strategy-large_window").checked).toBe(true);
+
+    // the click is not lost: its own request follows and the text gets the large window
+    const textarea = screen.getByTestId<HTMLTextAreaElement>("config-toml-input");
+    await waitFor(() => expect(textarea.value).toContain("model_context_window = 372000"));
+    expect(lastTemplateRequest()).toMatchObject({
+      model: "gpt-6-astra",
+      contextStrategy: "large_window",
+    });
   });
 
   it("omits the template numbers until the response arrives and names the model from the live field", async () => {
@@ -434,21 +669,19 @@ describe("ConfigureScreen", () => {
 
     // loading: fallback phrase, no numbers, and nothing half-interpolated anywhere on the card
     const card = screen.getByTestId("codex-config-card");
-    expect(card).toHaveTextContent("auto-compaction for the selected model.");
-    expect(screen.queryByTestId("config-scope-hint")).toBeNull();
-    expect(screen.queryByTestId("config-scope-body_after_prefix-explanation")).toBeNull();
-    expect(screen.getByTestId("config-scope-total-explanation")).toBeInTheDocument();
-    expect(card).not.toHaveTextContent(/undefined|NaN|\{\{/);
+    expect(card).toHaveTextContent("the priority tier for the selected model,");
+    expect(screen.queryByTestId("config-strategy-openai_default-explanation")).toBeNull();
+    expect(screen.getByTestId("config-context-tips")).toBeInTheDocument();
+    expect(card).not.toHaveTextContent(/undefined|NaN|\{\{|0K/);
 
     // the response arrives: the numbers show up, formatted from the DTO
     await act(async () => {
-      resolveTemplate(codexTemplate("", "body_after_prefix"));
+      resolveTemplate(codexTemplate("", "openai_default"));
       await Promise.resolve();
     });
-    expect(await screen.findByTestId("config-scope-hint")).toHaveTextContent("300000");
-    expect(screen.getByTestId("config-scope-body_after_prefix-explanation")).toHaveTextContent(
-      "372k",
-    );
+    expect(
+      await screen.findByTestId("config-strategy-openai_default-explanation"),
+    ).toHaveTextContent("272K");
     expect(card).not.toHaveTextContent(/undefined|NaN|\{\{/);
   });
 

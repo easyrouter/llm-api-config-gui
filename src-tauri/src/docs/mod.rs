@@ -567,6 +567,7 @@ mod tests {
                     "install-cli",
                     "install-cc-switch",
                     "configure-cc-switch",
+                    "context-compaction",
                     "verify",
                     "troubleshooting",
                     "faq"
@@ -582,6 +583,7 @@ mod tests {
             assert_eq!(step("env-check"), Some(WizardStep::EnvCheck));
             assert_eq!(step("install-cli"), Some(WizardStep::Install));
             assert_eq!(step("configure-cc-switch"), Some(WizardStep::Configure));
+            assert_eq!(step("context-compaction"), Some(WizardStep::Configure));
             assert_eq!(step("verify"), Some(WizardStep::Verify));
             assert_eq!(step("troubleshooting"), Some(WizardStep::Diagnose));
             assert_eq!(step("faq"), None);
@@ -668,14 +670,14 @@ mod tests {
         let ctx = ctx(dir.path(), 3600);
         let index = fetch_index(&ctx, "zh-CN").await.expect("index");
         assert_eq!(index.source, DocsSource::Bundled);
-        assert_eq!(index.sections.len(), 10);
+        assert_eq!(index.sections.len(), 11);
 
         let page = fetch_page(&ctx, "verify", "zh").await.expect("page");
         assert_eq!(page.source, DocsSource::Bundled);
         assert_eq!(page.lang, "zh-CN");
         assert_eq!(page.id, "verify");
         assert!(page.markdown.starts_with("# "));
-        assert!(!page.title.is_empty());
+        assert_ne!(page.title.len(), 0);
     }
 
     #[tokio::test]

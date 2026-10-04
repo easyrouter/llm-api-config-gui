@@ -84,9 +84,10 @@ use url::{form_urlencoded, Position, Url};
 
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    AppConfig, AutoCompactScope, CcSwitchImportRequest, CheckId, CodexConfigRequest,
-    CodexConfigTemplate, ConfigGuide, GuideBranch, GuideStep, KeyIssue, KeyValidation, Params,
-    Protocol, ProviderPreset, ToolId, UrlPreview, UrlRule, UrlWarning,
+    AppConfig, CcSwitchImportRequest, CheckId, CodexConfigRequest, CodexConfigTemplate,
+    CodexLargeContext, ConfigGuide, ContextStrategy, ContextStrategyInfo, GuideBranch, GuideStep,
+    KeyIssue, KeyValidation, Params, Protocol, ProviderPreset, ToolId, UrlPreview, UrlRule,
+    UrlWarning,
 };
 use crate::redact::{mask_value, redact_secrets};
 
@@ -500,6 +501,12 @@ fn import_url(req: &CcSwitchImportRequest, config: &AppConfig, key: &str) -> App
             "the provider name must not be empty".into(),
         ));
     }
+    // CC Switch writes this name verbatim as the Codex provider table's `name`, so a Codex import
+    // gets the same guard as the template (ADR-0009); the masked preview shows the result.
+    let name = match req.tool {
+        ToolId::Codex => local_compaction_name(name, &config.gateway.preset_provider_name),
+        ToolId::ClaudeCode => name,
+    };
     if !validate_api_key(&req.api_key).valid {
         return Err(AppError::InvalidInput(
             "the API key has blocking format issues".into(),
@@ -536,15 +543,126 @@ pub const CODEX_CONFIG_KEY_PLACEHOLDER: &str = "<API-KEY>";
 /// Provider table key in the template (`[model_providers.cliproxyapi]`).
 const CODEX_PROVIDER_ID: &str = "cliproxyapi";
 const CODEX_SANDBOX_MODE: &str = "workspace-write";
-const CODEX_MODEL_CONTEXT_WINDOW: u64 = 372_000;
-const CODEX_AUTO_COMPACT_TOKEN_LIMIT: u64 = 300_000;
 const CODEX_SERVICE_TIER: &str = "priority";
 
-/// Wire form of an [`AutoCompactScope`] (`body_after_prefix` / `total`).
-pub(crate) fn auto_compact_scope_key(scope: AutoCompactScope) -> &'static str {
-    match scope {
-        AutoCompactScope::BodyAfterPrefix => "body_after_prefix",
-        AutoCompactScope::Total => "total",
+// Codex's own context numbers (rust-v0.160.0, ADR-0009). The bundled catalog lists the models the
+// wizard suggests (gpt-6-astra, gpt-6.1-sol, gpt-5.6-sol) with `context_window` 272000,
+// `max_context_window` 872000 and no per-model compaction limit, and gives unknown models a
+// 272000 fallback — so 272000 is what Codex uses whenever the template writes no window.
+
+/// Window Codex uses when `model_context_window` is not written.
+const CODEX_DEFAULT_CONTEXT_WINDOW: u64 = 272_000;
+/// Largest `model_context_window` Codex accepts for [`LARGE_WINDOW_MODELS`] (larger values are
+/// clamped); every other model is capped at 272000.
+const CODEX_MAX_CONTEXT_WINDOW: u64 = 872_000;
+/// The catalog slugs (rust-v0.160.0) whose `max_context_window` is 872000 — the only models a
+/// larger window can apply to. `gpt-5.5` and unknown slugs are capped at 272000, so for them
+/// Codex would silently clamp the large window back to the default.
+const LARGE_WINDOW_MODELS: [&str; 7] = [
+    "gpt-6.1-sol",
+    "gpt-6-astra",
+    "gpt-6-sol",
+    "gpt-6-luna",
+    "gpt-5.6-sol",
+    "gpt-5.6-terra",
+    "gpt-5.6-luna",
+];
+/// Automatic compaction starts at this share of the window when no limit is written; with scope
+/// `total` a written limit is clamped to it.
+const CODEX_AUTO_COMPACT_PERCENT: u64 = 90;
+/// Share of the window Codex treats as usable: compaction is forced here in every scope, and
+/// `/status` reports this as the window.
+const CODEX_USABLE_WINDOW_PERCENT: u64 = 95;
+/// Input size above which OpenAI bills the whole request at long-context rates (2x input and
+/// cache, 1.5x output — OpenAI API model pages for GPT-6 / GPT-5.6).
+const LONG_CONTEXT_PRICE_THRESHOLD: u64 = 272_000;
+/// The only scope the template ever writes (Codex's default; ADR-0009).
+const CODEX_AUTO_COMPACT_SCOPE: &str = "total";
+
+/// `true` when Codex resolves `model` to one of [`LARGE_WINDOW_MODELS`]: its longest-prefix
+/// match, retried once after dropping a single `namespace/` segment (`find_model_by_longest_prefix`
+/// / `find_model_by_namespaced_suffix` in Codex's models manager). Pure.
+fn supports_large_window(model: &str) -> bool {
+    let matches = |slug: &str| LARGE_WINDOW_MODELS.iter().any(|m| slug.starts_with(m));
+    let model = model.trim();
+    if matches(model) {
+        return true;
+    }
+    model.split_once('/').is_some_and(|(namespace, suffix)| {
+        !namespace.is_empty()
+            && namespace
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+            && !suffix.contains('/')
+            && matches(suffix)
+    })
+}
+
+/// `gateway.codexLargeContext` when it may be offered for `model`: enabled, larger than Codex's
+/// default window, within what Codex accepts, with a compaction limit Codex applies as written
+/// (at most 90 % of the window — scope `total` clamps anything higher), and for a model whose
+/// window can actually grow ([`supports_large_window`]). Anything else is treated as off rather
+/// than rendered into a misleading template.
+fn large_context<'a>(config: &'a AppConfig, model: &str) -> Option<&'a CodexLargeContext> {
+    let large = &config.gateway.codex_large_context;
+    let sane = large.enabled
+        && large.context_window > CODEX_DEFAULT_CONTEXT_WINDOW
+        && large.context_window <= CODEX_MAX_CONTEXT_WINDOW
+        && large.auto_compact_token_limit > 0
+        && large.auto_compact_token_limit
+            <= large.context_window * CODEX_AUTO_COMPACT_PERCENT / 100
+        && supports_large_window(model);
+    sane.then_some(large)
+}
+
+/// What Codex makes of a window and an optional written limit (scope `total`: the limit applies
+/// as written up to 90 % of the window, which is also the default). Pure.
+fn strategy_info(
+    strategy: ContextStrategy,
+    context_window: u64,
+    written_limit: Option<u64>,
+) -> ContextStrategyInfo {
+    let derived_limit = context_window * CODEX_AUTO_COMPACT_PERCENT / 100;
+    ContextStrategyInfo {
+        strategy,
+        context_window,
+        auto_compact_token_limit: written_limit.map_or(derived_limit, |l| l.min(derived_limit)),
+        usable_context_window: context_window * CODEX_USABLE_WINDOW_PERCENT / 100,
+        writes_keys: written_limit.is_some(),
+    }
+}
+
+/// The context strategies this preset offers for `model`, recommended first: OpenAI's defaults
+/// always, the large window only when [`large_context`] allows it. Pure.
+pub fn context_strategies(config: &AppConfig, model: &str) -> Vec<ContextStrategyInfo> {
+    let mut strategies = vec![strategy_info(
+        ContextStrategy::OpenaiDefault,
+        CODEX_DEFAULT_CONTEXT_WINDOW,
+        None,
+    )];
+    if let Some(large) = large_context(config, model) {
+        strategies.push(strategy_info(
+            ContextStrategy::LargeWindow,
+            large.context_window,
+            Some(large.auto_compact_token_limit),
+        ));
+    }
+    strategies
+}
+
+/// The strategy the template actually renders: the requested one when it is on offer for
+/// `model`, OpenAI's defaults otherwise (a webview cannot talk the template into a window IT has
+/// not enabled, or one Codex would clamp away).
+fn effective_strategy(
+    requested: ContextStrategy,
+    config: &AppConfig,
+    model: &str,
+) -> ContextStrategy {
+    match requested {
+        ContextStrategy::LargeWindow if large_context(config, model).is_some() => {
+            ContextStrategy::LargeWindow
+        }
+        _ => ContextStrategy::OpenaiDefault,
     }
 }
 
@@ -578,14 +696,36 @@ fn toml_quote(s: &str) -> String {
     out
 }
 
-/// Renders the recommended Codex `config.toml` (per the IT/dev-team spec): the gateway as a
-/// `cliproxyapi` provider with `experimental_bearer_token`, while keeping the official
-/// features (priority service tier, large context window, auto-compact). The base URL is the
-/// *effective* URL from [`preview_url`] (raw input when unparsable); `model` /
-/// `model_reasoning_effort` lines are omitted when empty; the bearer token is always the
-/// [`CODEX_CONFIG_KEY_PLACEHOLDER`] literal. The output is meant for an editable text box —
-/// users may tune any value (e.g. a stricter auto-compact limit) before pasting it into the
-/// CC Switch provider's config editor. Pure.
+/// `true` for provider names Codex treats as OpenAI or Azure: exactly `OpenAI`, or `azure` in
+/// any case. Codex then compacts *remotely* — an encrypted item only the upstream account that
+/// produced it can read, with no local fallback — which a gateway routing across several
+/// upstreams cannot honour (ADR-0009). Mirrors Codex's `is_openai` and the *name* branch of
+/// `is_azure_responses_provider`; Codex also treats a base URL with an Azure marker
+/// (`openai.azure.`, `azure-api.`, `azurefd.`, …) as Azure, which no name can override.
+fn triggers_remote_compaction(name: &str) -> bool {
+    name == "OpenAI" || name.eq_ignore_ascii_case("azure")
+}
+
+/// Provider display name for Codex (the template's table and the CC Switch import): the user's
+/// name, else the preset's, else the table id — skipping any that would switch Codex to remote
+/// compaction. Pure.
+fn local_compaction_name<'a>(user: &'a str, preset: &'a str) -> &'a str {
+    [user.trim(), preset.trim()]
+        .into_iter()
+        .find(|name| !name.is_empty() && !triggers_remote_compaction(name))
+        .unwrap_or(CODEX_PROVIDER_ID)
+}
+
+/// Renders the recommended Codex `config.toml` (per the IT/dev-team spec, context handling per
+/// ADR-0009): the gateway as a `cliproxyapi` provider with `experimental_bearer_token`, the
+/// priority service tier, and the chosen [`ContextStrategy`] — no context key for OpenAI's
+/// defaults, `model_context_window` / `model_auto_compact_token_limit` / scope `total` for the
+/// large window. The base URL is the *effective* URL from [`preview_url`] (raw input when
+/// unparsable); `model` / `model_reasoning_effort` lines are omitted when empty; the provider's
+/// display name never makes Codex compact remotely ([`local_compaction_name`]); the bearer token
+/// is always the [`CODEX_CONFIG_KEY_PLACEHOLDER`] literal. The output is meant for an editable
+/// text box — users may tune any value before applying it or pasting it into the CC Switch
+/// provider's config editor. Pure.
 pub fn codex_config_template(req: &CodexConfigRequest, config: &AppConfig) -> String {
     let protocol = crate::config::tool_protocol(&config.gateway, ToolId::Codex);
     let preview = preview_url(&req.base_url, protocol, config);
@@ -594,15 +734,9 @@ pub fn codex_config_template(req: &CodexConfigRequest, config: &AppConfig) -> St
     } else {
         preview.effective_url
     };
-    let name = req.provider_name.trim();
-    let name = if name.is_empty() {
-        config.gateway.preset_provider_name.trim()
-    } else {
-        name
-    };
+    let name = local_compaction_name(&req.provider_name, &config.gateway.preset_provider_name);
     let model = req.model.trim();
     let effort = req.reasoning_effort.trim();
-    let scope = auto_compact_scope_key(req.auto_compact_scope);
 
     // Collected one entry per line (an empty entry is a blank line) and joined at the end:
     // pushing `format!` results onto a `String` is denied by clippy::format_push_string.
@@ -618,23 +752,24 @@ pub fn codex_config_template(req: &CodexConfigRequest, config: &AppConfig) -> St
         lines.push(format!("model_reasoning_effort = {}", toml_quote(effort)));
     }
     lines.push(format!("sandbox_mode = {}", toml_quote(CODEX_SANDBOX_MODE)));
-    lines.push(format!(
-        "model_context_window = {CODEX_MODEL_CONTEXT_WINDOW}"
-    ));
-    lines.push(format!(
-        "model_auto_compact_token_limit = {CODEX_AUTO_COMPACT_TOKEN_LIMIT}"
-    ));
-    lines.push(format!(
-        "model_auto_compact_token_limit_scope = {}",
-        toml_quote(scope)
-    ));
+    if effective_strategy(req.context_strategy, config, model) == ContextStrategy::LargeWindow {
+        if let Some(large) = large_context(config, model) {
+            lines.push(format!("model_context_window = {}", large.context_window));
+            lines.push(format!(
+                "model_auto_compact_token_limit = {}",
+                large.auto_compact_token_limit
+            ));
+            lines.push(format!(
+                "model_auto_compact_token_limit_scope = {}",
+                toml_quote(CODEX_AUTO_COMPACT_SCOPE)
+            ));
+        }
+    }
     lines.push(String::new());
     lines.push(format!("service_tier = {}", toml_quote(CODEX_SERVICE_TIER)));
     lines.push(String::new());
     lines.push(format!("[model_providers.{CODEX_PROVIDER_ID}]"));
-    if !name.is_empty() {
-        lines.push(format!("name = {}", toml_quote(name)));
-    }
+    lines.push(format!("name = {}", toml_quote(name)));
     lines.push(format!("base_url = {}", toml_quote(&base_url)));
     lines.push("wire_api = \"responses\"".to_owned());
     lines.push("requires_openai_auth = true".to_owned());
@@ -645,18 +780,21 @@ pub fn codex_config_template(req: &CodexConfigRequest, config: &AppConfig) -> St
     format!("{}\n", lines.join("\n"))
 }
 
-/// [`codex_config_template`] plus the two limits it embeds, so the UI can quote
-/// `model_context_window` / `model_auto_compact_token_limit` in its copy without duplicating
-/// the constants (they are the same for every model the template renders — Codex's bundled
-/// catalog lists `gpt-6-astra` and `gpt-5.6-sol` with identical context numbers). Pure.
+/// [`codex_config_template`] plus the strategy it rendered and the numbers of every strategy on
+/// offer for the request's model, so the UI quotes them in its copy without duplicating the
+/// constants (OpenAI's defaults are the same for every model the wizard suggests — Codex's
+/// bundled catalog lists `gpt-6-astra`, `gpt-6.1-sol` and `gpt-5.6-sol` with identical context
+/// numbers, and gives unknown models the same 272000). Pure.
 pub fn codex_config_template_response(
     req: &CodexConfigRequest,
     config: &AppConfig,
 ) -> CodexConfigTemplate {
+    let model = req.model.trim();
     CodexConfigTemplate {
         toml: codex_config_template(req, config),
-        model_context_window: CODEX_MODEL_CONTEXT_WINDOW,
-        model_auto_compact_token_limit: CODEX_AUTO_COMPACT_TOKEN_LIMIT,
+        context_strategy: effective_strategy(req.context_strategy, config, model),
+        context_strategies: context_strategies(config, model),
+        long_context_threshold: LONG_CONTEXT_PRICE_THRESHOLD,
     }
 }
 
@@ -1293,6 +1431,32 @@ mod tests {
         );
     }
 
+    /// CC Switch writes the imported name verbatim as the Codex provider table's `name`, so the
+    /// import must not hand it a name that switches Codex to remote compaction (ADR-0009).
+    #[test]
+    fn codex_import_never_names_the_provider_openai_or_azure() {
+        for name in ["OpenAI", "azure", "Azure", " AZURE "] {
+            let mut req = import_request();
+            req.provider_name = name.into();
+            let url = build_import_url(&req, &cfg()).expect("url");
+            assert!(url.contains("name=Service+Gateway&"), "{name}: {url}");
+            // the masked preview shows exactly the name that is sent
+            let masked = masked_import_url(&req, &cfg()).expect("url");
+            assert_eq!(url.replace(IMPORT_KEY, "sk-****0123"), masked);
+        }
+        // a preset that is itself a reserved name falls back to the table id
+        let mut c = cfg();
+        c.gateway.preset_provider_name = "OpenAI".into();
+        let mut req = import_request();
+        req.provider_name = "OpenAI".into();
+        let url = build_import_url(&req, &c).expect("url");
+        assert!(url.contains("name=cliproxyapi&"), "{url}");
+        // Claude Code has no such rule — its name is passed through
+        req.tool = ToolId::ClaudeCode;
+        let url = build_import_url(&req, &c).expect("url");
+        assert!(url.contains("name=OpenAI&"), "{url}");
+    }
+
     #[test]
     fn masked_import_url_never_contains_the_key() {
         let masked = masked_import_url(&import_request(), &cfg()).expect("url");
@@ -1331,21 +1495,39 @@ mod tests {
             base_url: "https://seedrouter.net/v1".into(),
             model: "gpt-5.6-sol".into(),
             reasoning_effort: "medium".into(),
-            auto_compact_scope: AutoCompactScope::BodyAfterPrefix,
+            context_strategy: ContextStrategy::OpenaiDefault,
         }
+    }
+
+    /// The preset with the large window switched on (IT confirmed the gateway accepts it).
+    fn cfg_with_large_context() -> AppConfig {
+        let mut c = cfg();
+        c.gateway.codex_large_context = CodexLargeContext {
+            enabled: true,
+            context_window: 372_000,
+            auto_compact_token_limit: 300_000,
+        };
+        c
+    }
+
+    fn top_level_integer(rendered: &str, key: &str) -> Option<u64> {
+        let parsed: toml::Value = toml::from_str(rendered).expect("valid TOML");
+        parsed
+            .get(key)
+            .and_then(toml::Value::as_integer)
+            .and_then(|n| u64::try_from(n).ok())
     }
 
     #[test]
     fn codex_config_template_matches_the_spec() {
+        // OpenAI's defaults (ADR-0009): no context key at all — Codex then uses the model's
+        // catalog window (272000) and compacts at 90 % of it.
         let rendered = codex_config_template(&codex_config_request(), &cfg());
         let expected = "\
 model = \"gpt-5.6-sol\"
 model_provider = \"cliproxyapi\"
 model_reasoning_effort = \"medium\"
 sandbox_mode = \"workspace-write\"
-model_context_window = 372000
-model_auto_compact_token_limit = 300000
-model_auto_compact_token_limit_scope = \"body_after_prefix\"
 
 service_tier = \"priority\"
 
@@ -1370,80 +1552,218 @@ experimental_bearer_token = \"<API-KEY>\"
     }
 
     #[test]
-    fn codex_config_template_renders_gpt_6_astra_with_the_same_limits() {
-        // GPT-6 Astra is the Codex preset since 2026-09-12 (Q-M3). Codex's bundled catalog
-        // lists it with the same context_window / max_context_window as gpt-5.6-sol, so IT's
-        // numbers apply unchanged — only the model line differs from the Sol spec above.
+    fn codex_config_template_writes_no_context_key_for_openai_defaults() {
+        // Same for every model the wizard suggests — Codex's catalog gives them all 272000.
+        for model in ["gpt-6-astra", "gpt-6.1-sol", "gpt-5.6-sol"] {
+            let mut req = codex_config_request();
+            req.model = model.into();
+            let rendered = codex_config_template(&req, &cfg_with_large_context());
+            assert!(
+                rendered.starts_with(&format!("model = \"{model}\"\n")),
+                "{rendered}"
+            );
+            for key in [
+                "model_context_window",
+                "model_auto_compact_token_limit",
+                "model_auto_compact_token_limit_scope",
+            ] {
+                assert!(!rendered.contains(key), "{key} in {rendered}");
+            }
+        }
+    }
+
+    #[test]
+    fn codex_config_template_writes_the_large_window_with_scope_total() {
         let mut req = codex_config_request();
         req.model = "gpt-6-astra".into();
-        let rendered = codex_config_template(&req, &cfg());
+        req.context_strategy = ContextStrategy::LargeWindow;
+        let rendered = codex_config_template(&req, &cfg_with_large_context());
         assert!(
-            rendered.starts_with("model = \"gpt-6-astra\"\n"),
+            rendered.contains(
+                "sandbox_mode = \"workspace-write\"\n\
+                 model_context_window = 372000\n\
+                 model_auto_compact_token_limit = 300000\n\
+                 model_auto_compact_token_limit_scope = \"total\"\n\n\
+                 service_tier = \"priority\"\n"
+            ),
             "{rendered}"
         );
-        assert!(
-            rendered.contains("\nmodel_reasoning_effort = \"medium\"\n"),
-            "{rendered}"
+        // top-level keys — before the first table, or TOML would file them under it
+        assert_eq!(
+            top_level_integer(&rendered, "model_context_window"),
+            Some(372_000)
         );
-        assert!(
-            rendered.contains("\nmodel_context_window = 372000\n"),
-            "{rendered}"
-        );
-        assert!(
-            rendered.contains("\nmodel_auto_compact_token_limit = 300000\n"),
-            "{rendered}"
+        assert_eq!(
+            top_level_integer(&rendered, "model_auto_compact_token_limit"),
+            Some(300_000)
         );
         let parsed: toml::Value = toml::from_str(&rendered).expect("valid TOML");
         assert_eq!(
-            parsed.get("model").and_then(toml::Value::as_str),
-            Some("gpt-6-astra")
-        );
-        assert_eq!(
             parsed
-                .get("model_reasoning_effort")
+                .get("model_auto_compact_token_limit_scope")
                 .and_then(toml::Value::as_str),
-            Some("medium")
+            Some("total")
         );
     }
 
     #[test]
-    fn codex_config_template_response_carries_exactly_the_rendered_limits() {
-        let req = codex_config_request();
-        let response = codex_config_template_response(&req, &cfg());
-        assert_eq!(response.toml, codex_config_template(&req, &cfg()));
-        // The DTO numbers must be the ones in the toml — parse it rather than trust the
-        // constants, so the two can never drift apart.
-        let parsed: toml::Value = toml::from_str(&response.toml).expect("valid TOML");
-        let rendered = |key: &str| {
-            parsed
-                .get(key)
-                .and_then(toml::Value::as_integer)
-                .and_then(|n| u64::try_from(n).ok())
-                .expect(key)
-        };
-        assert_eq!(
-            rendered("model_context_window"),
-            response.model_context_window
-        );
-        assert_eq!(
-            rendered("model_auto_compact_token_limit"),
-            response.model_auto_compact_token_limit
-        );
-    }
-
-    #[test]
-    fn codex_config_template_scope_and_optional_fields() {
+    fn large_window_is_only_rendered_when_the_preset_offers_it() {
         let mut req = codex_config_request();
-        req.auto_compact_scope = AutoCompactScope::Total;
+        req.context_strategy = ContextStrategy::LargeWindow;
+        // shipped preset: off — the request falls back to OpenAI's defaults
+        let off = codex_config_template_response(&req, &cfg());
+        assert_eq!(off.context_strategy, ContextStrategy::OpenaiDefault);
+        assert!(!off.toml.contains("model_context_window"), "{}", off.toml);
+        assert_eq!(
+            off.toml,
+            codex_config_template(&codex_config_request(), &cfg())
+        );
+
+        // enabled but not sane: treated as off rather than rendered
+        let broken = [
+            (272_000, 200_000), // not larger than Codex's own default window
+            (900_000, 300_000), // above what Codex accepts (872000)
+            (372_000, 334_801), // above 90 % of the window — Codex would not apply it as written
+            (372_000, 372_000), // not even below the window
+            (372_000, 0),       // no limit
+        ];
+        for (context_window, auto_compact_token_limit) in broken {
+            let mut c = cfg();
+            c.gateway.codex_large_context = CodexLargeContext {
+                enabled: true,
+                context_window,
+                auto_compact_token_limit,
+            };
+            let response = codex_config_template_response(&req, &c);
+            assert_eq!(
+                response.context_strategy,
+                ContextStrategy::OpenaiDefault,
+                "{context_window}/{auto_compact_token_limit}"
+            );
+            assert_eq!(response.context_strategies.len(), 1);
+            assert!(!response.toml.contains("model_context_window"));
+        }
+    }
+
+    #[test]
+    fn large_window_is_only_offered_for_models_whose_window_can_grow() {
+        // Codex caps gpt-5.5 and unknown slugs at 272000 and would clamp the large window back to
+        // the default — offering it there would quote numbers Codex never uses.
+        let c = cfg_with_large_context();
+        for model in [
+            "gpt-5.5",
+            "gpt-5.4",
+            "gpt-5.3-codex-spark",
+            "claude-sonnet-5",
+            "",
+            "  ",
+        ] {
+            let mut req = codex_config_request();
+            req.model = model.into();
+            req.context_strategy = ContextStrategy::LargeWindow;
+            let response = codex_config_template_response(&req, &c);
+            assert_eq!(response.context_strategies.len(), 1, "{model:?}");
+            assert_eq!(response.context_strategy, ContextStrategy::OpenaiDefault);
+            assert!(!response.toml.contains("model_context_window"), "{model:?}");
+        }
+        // the catalog family, by longest prefix, and one simple namespace segment like Codex
+        for model in [
+            "gpt-6.1-sol",
+            "gpt-6-astra",
+            "gpt-6-sol",
+            "gpt-6-luna",
+            "gpt-5.6-sol",
+            "gpt-5.6-terra",
+            "gpt-5.6-luna",
+            "gpt-6-astra-2026-09-03",
+            "openai/gpt-6-astra",
+            " gpt-6-astra ",
+        ] {
+            assert!(supports_large_window(model), "{model:?}");
+            assert_eq!(context_strategies(&c, model).len(), 2, "{model:?}");
+        }
+        for model in [
+            "a/b/gpt-6-astra",
+            "my ns/gpt-6-astra",
+            "/gpt-6-astra",
+            "gpt-6",
+        ] {
+            assert!(!supports_large_window(model), "{model:?}");
+        }
+    }
+
+    #[test]
+    fn context_strategies_quote_what_codex_will_do() {
+        // OpenAI's defaults: 272000 window, compaction at 90 % (244800), forced at 95 % (258400).
+        let only_default = context_strategies(&cfg(), "gpt-6-astra");
+        assert_eq!(
+            only_default,
+            [ContextStrategyInfo {
+                strategy: ContextStrategy::OpenaiDefault,
+                context_window: 272_000,
+                auto_compact_token_limit: 244_800,
+                usable_context_window: 258_400,
+                writes_keys: false,
+            }]
+        );
+
+        let both = context_strategies(&cfg_with_large_context(), "gpt-6-astra");
+        assert_eq!(both.len(), 2);
+        assert_eq!(both[0], only_default[0], "recommended first");
+        assert_eq!(
+            both[1],
+            ContextStrategyInfo {
+                strategy: ContextStrategy::LargeWindow,
+                context_window: 372_000,
+                auto_compact_token_limit: 300_000,
+                usable_context_window: 353_400,
+                writes_keys: true,
+            }
+        );
+
+        // exactly 90 % is still applied as written — SeedRouter's own guide uses 372000 / 334800
+        let mut c = cfg_with_large_context();
+        c.gateway.codex_large_context.auto_compact_token_limit = 334_800;
+        assert_eq!(
+            context_strategies(&c, "gpt-6-astra")[1].auto_compact_token_limit,
+            334_800
+        );
+    }
+
+    #[test]
+    fn codex_config_template_response_carries_exactly_the_rendered_numbers() {
+        let mut req = codex_config_request();
+        req.context_strategy = ContextStrategy::LargeWindow;
+        let c = cfg_with_large_context();
+        let response = codex_config_template_response(&req, &c);
+        assert_eq!(response.toml, codex_config_template(&req, &c));
+        assert_eq!(response.context_strategy, ContextStrategy::LargeWindow);
+        assert_eq!(response.long_context_threshold, 272_000);
+        // The quoted numbers must be the ones in the toml — parse it rather than trust the
+        // constants, so the two can never drift apart.
+        let large = response
+            .context_strategies
+            .iter()
+            .find(|s| s.strategy == ContextStrategy::LargeWindow)
+            .expect("large window offered");
+        assert_eq!(
+            top_level_integer(&response.toml, "model_context_window"),
+            Some(large.context_window)
+        );
+        assert_eq!(
+            top_level_integer(&response.toml, "model_auto_compact_token_limit"),
+            Some(large.auto_compact_token_limit)
+        );
+    }
+
+    #[test]
+    fn codex_config_template_optional_fields() {
+        let mut req = codex_config_request();
         req.model = "  ".into();
         req.reasoning_effort = String::new();
         req.provider_name = String::new();
         req.base_url = "https://seedrouter.net/".into();
         let rendered = codex_config_template(&req, &cfg());
-        assert!(
-            rendered.contains("model_auto_compact_token_limit_scope = \"total\""),
-            "{rendered}"
-        );
         assert!(!rendered.contains("\nmodel = "), "{rendered}");
         assert!(!rendered.starts_with("model = "), "{rendered}");
         assert!(!rendered.contains("model_reasoning_effort"), "{rendered}");
@@ -1458,6 +1778,32 @@ experimental_bearer_token = \"<API-KEY>\"
             "{rendered}"
         );
         toml::from_str::<toml::Value>(&rendered).expect("valid TOML");
+    }
+
+    #[test]
+    fn codex_config_template_never_names_the_provider_openai_or_azure() {
+        // "OpenAI" (exactly) or "azure" (any case) would switch Codex to remote compaction,
+        // which a multi-upstream gateway cannot honour — fall back to the preset name, then to
+        // the table id.
+        for name in ["OpenAI", "azure", "Azure", " AZURE "] {
+            let mut req = codex_config_request();
+            req.provider_name = name.into();
+            let rendered = codex_config_template(&req, &cfg());
+            assert!(
+                rendered.contains("name = \"Service Gateway\""),
+                "{name}: {rendered}"
+            );
+        }
+        let mut c = cfg();
+        c.gateway.preset_provider_name = "OpenAI".into();
+        let mut req = codex_config_request();
+        req.provider_name = String::new();
+        let rendered = codex_config_template(&req, &c);
+        assert!(rendered.contains("name = \"cliproxyapi\""), "{rendered}");
+        // names that merely contain the words are fine (Codex compares exactly)
+        for name in ["OpenAI Gateway", "openai", "SeedRouter (Azure)"] {
+            assert_eq!(local_compaction_name(name, "Service Gateway"), name);
+        }
     }
 
     #[test]

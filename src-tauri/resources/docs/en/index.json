@@ -50,6 +50,13 @@
       "wizardStep": "configure"
     },
     {
+      "id": "context-compaction",
+      "title": "Context & auto-compaction",
+      "path": "context-compaction.md",
+      "lang": "en",
+      "wizardStep": "configure"
+    },
+    {
       "id": "verify",
       "title": "Apply & verify",
       "path": "verify.md",

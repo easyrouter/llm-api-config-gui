@@ -552,7 +552,7 @@ mod tests {
             .iter()
             .all(|p| p.starts_with(home) || p.starts_with("/etc")));
         if cfg!(windows) {
-            assert!(shell_rc_files().is_empty());
+            assert_eq!(shell_rc_files().len(), 0, "{:?}", shell_rc_files());
         }
     }
 
@@ -574,9 +574,9 @@ mod tests {
     fn os_info_is_populated() {
         let info = os_info();
         assert_eq!(info.platform, platform());
-        assert!(!info.version.is_empty());
-        assert!(!info.arch.is_empty());
-        assert!(!info.home_dir.is_empty());
+        assert_ne!(info.version.len(), 0);
+        assert_ne!(info.arch.len(), 0);
+        assert_ne!(info.home_dir.len(), 0);
         if cfg!(windows) {
             assert!(info.build.is_some_and(|b| b > 10_000), "{info:?}");
             assert_eq!(info.shell.to_ascii_lowercase(), "cmd.exe");

@@ -14,11 +14,14 @@ import {
   restoreCodexConfig,
 } from "@/lib/tauri";
 import type {
-  AutoCompactScope,
   CodexConfigApplyResult,
   CodexConfigTemplate,
+  ContextStrategy,
+  ContextStrategyInfo,
   ProviderPreset,
 } from "@/lib/types";
+
+import { describeLiveContext, liveContextDiffers, strategyParams } from "./context-strategy";
 
 /** Must match `guide::CODEX_CONFIG_KEY_PLACEHOLDER` on the Rust side. */
 export const CODEX_CONFIG_KEY_PLACEHOLDER = "<API-KEY>";
@@ -26,10 +29,11 @@ export const CODEX_CONFIG_KEY_PLACEHOLDER = "<API-KEY>";
 /** Delay before an input change regenerates the template / refreshes the file status. */
 const REGENERATE_DELAY_MS = 250;
 
-const SCOPES: readonly AutoCompactScope[] = ["body_after_prefix", "total"];
-
 /** Help section that explains what every one-click action does behind the scenes. */
 const HELP_SECTION = "one-click";
+
+/** Help section that explains the context window, compaction and every related key. */
+const CONTEXT_HELP_SECTION = "context-compaction";
 
 export interface CodexConfigCardProps {
   preset: ProviderPreset;
@@ -52,35 +56,16 @@ function maskedPreview(template: string, apiKey: string): string {
   return key === "" ? template : template.split(CODEX_CONFIG_KEY_PLACEHOLDER).join(maskSecret(key));
 }
 
-/** The two limits the template embeds, formatted for the card's copy. */
-interface TemplateLimits {
-  /** `model_auto_compact_token_limit` as typed in the file, e.g. `300000`. */
-  limit: string;
-  /** `model_context_window` rounded to thousands, e.g. `372k`. */
-  contextWindow: string;
-}
-
-/**
- * `null` until the first template response (and for a missing one), so the strings that quote
- * a number are left out instead of rendering `undefined` / `NaN`. Re-runs keep the previous
- * response's numbers — `useAsync` holds `data` while a new run is in flight.
- */
-function templateLimits(template: CodexConfigTemplate | null): TemplateLimits | null {
-  if (!template) return null;
-  return {
-    limit: String(template.modelAutoCompactTokenLimit),
-    contextWindow: `${Math.round(template.modelContextWindow / 1000)}k`,
-  };
-}
-
 /**
  * Recommended Codex `config.toml` (codex tab only): rendered by the Rust core from the live
- * provider values (`CodexConfigTemplate`: the toml plus the two limits it embeds, which the
- * card's copy quotes instead of hard-coding them) and shown in an *editable* text box, so users
- * can tune any default (e.g. a stricter `model_auto_compact_token_limit`) before applying it.
- * The primary action writes the file to `~/.codex/config.toml` (show-before-run dialog with a
- * masked preview, automatic backup, one-click restore); copying stays available for users who
- * prefer to paste it into CC Switch themselves. The template carries an `<API-KEY>`
+ * provider values and the chosen context strategy (`CodexConfigTemplate`: the toml plus the
+ * numbers of every strategy on offer, which the card's copy quotes instead of hard-coding them)
+ * and shown in an *editable* text box, so users can tune any default before applying it. The
+ * context section explains the window and automatic compaction (ADR-0009): OpenAI's defaults are
+ * recommended and write no key; a larger window is offered only when IT enabled it in the
+ * preset. The primary action writes the file to `~/.codex/config.toml` (show-before-run dialog
+ * with a masked preview, automatic backup, one-click restore); copying stays available for users
+ * who prefer to paste it into CC Switch themselves. The template carries an `<API-KEY>`
  * placeholder; the real key is substituted only into the copied / written text, never shown on
  * screen. Manual edits freeze auto-regeneration until the user explicitly restores the
  * generated template.
@@ -94,7 +79,7 @@ export function CodexConfigCard({
 }: CodexConfigCardProps) {
   const { t } = useTranslation();
   const textId = useId();
-  const [scope, setScope] = useState<AutoCompactScope>("body_after_prefix");
+  const [strategy, setStrategy] = useState<ContextStrategy>("openai_default");
   const [text, setText] = useState("");
   const [edited, setEdited] = useState(false);
   const editedRef = useRef(false);
@@ -103,12 +88,24 @@ export function CodexConfigCard({
   const template = useAsync(getCodexConfigTemplate, {
     onSuccess: (response: CodexConfigTemplate) => {
       if (!editedRef.current) setText(response.toml);
+      // Keep the user's choice while it is on offer — a response to an earlier request must not
+      // undo a click made since. Fall back to what the core rendered once the choice is gone
+      // (IT switched the large window off, or the model cannot use it).
+      setStrategy((current) =>
+        response.contextStrategies.some((s) => s.strategy === current)
+          ? current
+          : response.contextStrategy,
+      );
     },
   });
   const { run } = template;
   const reasoningEffort = preset.reasoningEffortHint;
-  const limits = templateLimits(template.data);
   const liveModel = model.trim();
+  // The numbers of the strategy actually rendered into the text (not the radio, which can be a
+  // step ahead of the response) — what the live-file hint compares against.
+  const renderedInfo = template.data?.contextStrategies.find(
+    (s) => s.strategy === template.data?.contextStrategy,
+  );
 
   useEffect(() => {
     if (edited) return undefined;
@@ -118,11 +115,11 @@ export function CodexConfigCard({
         baseUrl: baseUrl.trim(),
         model: model.trim(),
         reasoningEffort: reasoningEffort.trim(),
-        autoCompactScope: scope,
+        contextStrategy: strategy,
       });
     }, REGENERATE_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [providerName, baseUrl, model, reasoningEffort, scope, edited, run]);
+  }, [providerName, baseUrl, model, reasoningEffort, strategy, edited, run]);
 
   const markEdited = (value: string) => {
     setText(value);
@@ -138,26 +135,12 @@ export function CodexConfigCard({
       baseUrl: baseUrl.trim(),
       model: model.trim(),
       reasoningEffort: reasoningEffort.trim(),
-      autoCompactScope: scope,
+      contextStrategy: strategy,
     });
   };
 
   const copyConfig = () => {
     void copy(substituteKey(text, apiKey));
-  };
-
-  /**
-   * The `body_after_prefix` explanation quotes the context window, so it waits for the numbers;
-   * `total` has nothing to interpolate. (The placeholder is `contextWindow`, not `context`: a
-   * value named `context` would double as i18next's context option.)
-   */
-  const scopeExplanation = (value: AutoCompactScope): string | null => {
-    if (value !== "body_after_prefix") return t(`guide:config.scope.${value}.explanation`);
-    return limits
-      ? t("guide:config.scope.body_after_prefix.explanation", {
-          contextWindow: limits.contextWindow,
-        })
-      : null;
   };
 
   return (
@@ -169,46 +152,12 @@ export function CodexConfigCard({
       data-testid="codex-config-card"
     >
       <div className="space-y-4">
-        <fieldset className="space-y-2">
-          <legend className="text-sm font-medium">{t("guide:config.scopeLabel")}</legend>
-          {limits && (
-            <p className="text-xs text-neutral-500" data-testid="config-scope-hint">
-              {t("guide:config.scopeHint", { limit: limits.limit })}
-            </p>
-          )}
-          {SCOPES.map((value) => {
-            const explanation = scopeExplanation(value);
-            return (
-              <label
-                key={value}
-                className="flex cursor-pointer items-start gap-2 rounded-md border border-neutral-200 p-2.5 text-sm dark:border-neutral-800"
-              >
-                <input
-                  type="radio"
-                  name={`${textId}-scope`}
-                  className="accent-brand-600 mt-1 size-4"
-                  checked={scope === value}
-                  onChange={() => setScope(value)}
-                  data-testid={`config-scope-${value}`}
-                />
-                <span>
-                  <span className="font-mono font-medium">
-                    {t(`guide:config.scope.${value}.label`)}
-                  </span>
-                  {explanation && (
-                    <span
-                      className="mt-0.5 block text-neutral-600 dark:text-neutral-400"
-                      data-testid={`config-scope-${value}-explanation`}
-                    >
-                      {explanation}
-                    </span>
-                  )}
-                </span>
-              </label>
-            );
-          })}
-        </fieldset>
-
+        <ContextSection
+          template={template.data}
+          strategy={strategy}
+          onStrategyChange={setStrategy}
+          radioName={`${textId}-strategy`}
+        />
         <div className="space-y-1.5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <label htmlFor={textId} className="text-sm font-medium">
@@ -270,9 +219,114 @@ export function CodexConfigCard({
           )}
         </div>
 
-        <ApplySection text={text} apiKey={apiKey} />
+        <ApplySection text={text} apiKey={apiKey} edited={edited} renderedInfo={renderedInfo} />
       </div>
     </Card>
+  );
+}
+/**
+ * "Context and automatic compaction" (ADR-0009): what the window and compaction are, the
+ * strategy the template applies (a radio list only when the preset offers more than OpenAI's
+ * defaults), the habits that matter more than any number, and the two CC Switch checkboxes that
+ * would undo it. Numbers come from the template response; nothing that quotes one renders before
+ * the first response arrives.
+ */
+function ContextSection({
+  template,
+  strategy,
+  onStrategyChange,
+  radioName,
+}: {
+  template: CodexConfigTemplate | null;
+  strategy: ContextStrategy;
+  onStrategyChange: (strategy: ContextStrategy) => void;
+  radioName: string;
+}) {
+  const { t } = useTranslation();
+  const strategies = template?.contextStrategies ?? [];
+  const threshold = template?.longContextThreshold ?? 0;
+
+  const explanation = (info: ContextStrategyInfo) =>
+    t(
+      `guide:config.context.strategy.${info.strategy}.explanation`,
+      strategyParams(info, threshold),
+    );
+
+  return (
+    <section
+      className="space-y-2"
+      aria-labelledby={`${radioName}-title`}
+      data-testid="config-context"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 id={`${radioName}-title`} className="text-sm font-medium">
+          {t("guide:config.context.title")}
+        </h3>
+        <HelpLink sectionId={CONTEXT_HELP_SECTION}>{t("guide:config.context.learnMore")}</HelpLink>
+      </div>
+      <p className="text-xs text-neutral-600 dark:text-neutral-400">
+        {t("guide:config.context.intro")}
+      </p>
+
+      {strategies.length > 1 ? (
+        <fieldset className="space-y-2" data-testid="config-context-choice">
+          <legend className="sr-only">{t("guide:config.context.choiceLabel")}</legend>
+          {strategies.map((info) => (
+            <label
+              key={info.strategy}
+              className="flex cursor-pointer items-start gap-2 rounded-md border border-neutral-200 p-2.5 text-sm dark:border-neutral-800"
+            >
+              <input
+                type="radio"
+                name={radioName}
+                className="accent-brand-600 mt-1 size-4"
+                checked={strategy === info.strategy}
+                onChange={() => onStrategyChange(info.strategy)}
+                data-testid={`config-strategy-${info.strategy}`}
+              />
+              <span>
+                <span className="font-medium">
+                  {t(`guide:config.context.strategy.${info.strategy}.label`)}
+                </span>
+                <span
+                  className="mt-0.5 block text-neutral-600 dark:text-neutral-400"
+                  data-testid={`config-strategy-${info.strategy}-explanation`}
+                >
+                  {explanation(info)}
+                </span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+      ) : (
+        strategies.map((info) => (
+          <div
+            key={info.strategy}
+            className="rounded-md border border-neutral-200 p-2.5 text-sm dark:border-neutral-800"
+          >
+            <div className="font-medium">
+              {t(`guide:config.context.strategy.${info.strategy}.label`)}
+            </div>
+            <p
+              className="mt-0.5 text-neutral-600 dark:text-neutral-400"
+              data-testid={`config-strategy-${info.strategy}-explanation`}
+            >
+              {explanation(info)}
+            </p>
+          </div>
+        ))
+      )}
+
+      <p
+        className="text-xs text-neutral-600 dark:text-neutral-400"
+        data-testid="config-context-tips"
+      >
+        {t("guide:config.context.tips")}
+      </p>
+      <Alert variant="warning" data-testid="config-context-cc-switch">
+        {t("guide:config.context.ccSwitch")}
+      </Alert>
+    </section>
   );
 }
 
@@ -280,8 +334,22 @@ export function CodexConfigCard({
  * "Apply to this machine" — the one-click write of `~/.codex/config.toml`. Confirm-first: the
  * dialog shows the target path, whether a file exists (and that it gets backed up), a masked
  * preview of the exact content, and the CC Switch caveat. Restore puts the newest backup back.
+ * When the live file carries context keys the rendered strategy would not write (e.g. the
+ * 372000 / 300000 / `body_after_prefix` of earlier versions), a hint says what applying changes
+ * — only while the text is the generated template: after a hand edit the strategy no longer
+ * describes what Apply writes, and the confirm dialog's preview shows the exact content.
  */
-function ApplySection({ text, apiKey }: { text: string; apiKey: string }) {
+function ApplySection({
+  text,
+  apiKey,
+  edited,
+  renderedInfo,
+}: {
+  text: string;
+  apiKey: string;
+  edited: boolean;
+  renderedInfo: ContextStrategyInfo | undefined;
+}) {
   const { t } = useTranslation();
   const [applyOpen, setApplyOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
@@ -351,6 +419,21 @@ function ApplySection({ text, apiKey }: { text: string; apiKey: string }) {
     return t("guide:config.apply.status.exists", { n: backups.length });
   })();
 
+  const liveContext = status.data?.liveContext ?? null;
+  const liveContextHint =
+    !edited &&
+    status.data?.matchesTemplate !== true &&
+    liveContext &&
+    renderedInfo &&
+    liveContextDiffers(liveContext, renderedInfo)
+      ? t(
+          renderedInfo.writesKeys
+            ? "guide:config.apply.liveContext.replaces"
+            : "guide:config.apply.liveContext.removes",
+          { settings: describeLiveContext(liveContext) },
+        )
+      : null;
+
   return (
     <div className="space-y-3 border-t border-neutral-200 pt-4 dark:border-neutral-800">
       <div className="flex flex-wrap items-center gap-3">
@@ -380,6 +463,11 @@ function ApplySection({ text, apiKey }: { text: string; apiKey: string }) {
           {t("guide:config.apply.status.label")}
           {statusText}
         </p>
+      )}
+      {liveContextHint && (
+        <Alert variant="info" data-testid="config-live-context">
+          {liveContextHint}
+        </Alert>
       )}
       {needsKey && !hasKey && (
         <Alert variant="warning" data-testid="config-apply-needs-key">

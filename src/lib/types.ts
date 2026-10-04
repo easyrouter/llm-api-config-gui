@@ -53,6 +53,19 @@ export interface GatewayPreset {
   defaultModel: string;
   defaultReasoningEffort: string;
   claudeCode: ClaudeCodeGateway;
+  /** Optional larger Codex context window, offered only when IT enabled it (ADR-0009). */
+  codexLargeContext: CodexLargeContext;
+}
+
+/**
+ * A larger Codex context window the `config.toml` card may offer as `large_window`. Off by
+ * default: every gateway route serving the Codex models must accept `contextWindow` input tokens
+ * plus output (ADR-0009).
+ */
+export interface CodexLargeContext {
+  enabled: boolean;
+  contextWindow: number;
+  autoCompactTokenLimit: number;
 }
 
 /**
@@ -394,6 +407,18 @@ export interface CodexConfigStatus {
   /** Backups written by this app, newest first. */
   backups: string[];
   matchesTemplate: boolean | null;
+  /** Context keys of the live file; `null` when absent, unparsable or setting none of them. */
+  liveContext: CodexContextSettings | null;
+}
+
+/**
+ * The top-level context keys found in the live `~/.codex/config.toml` — e.g. the 372000 /
+ * 300000 / `body_after_prefix` values earlier versions of this app wrote.
+ */
+export interface CodexContextSettings {
+  modelContextWindow: number | null;
+  modelAutoCompactTokenLimit: number | null;
+  modelAutoCompactTokenLimitScope: string | null;
 }
 
 export interface CodexConfigApplyResult {
@@ -502,8 +527,12 @@ export interface CcSwitchImportPreview {
   app: string;
 }
 
-/** Scope of Codex's `model_auto_compact_token_limit` (what the threshold counts). */
-export type AutoCompactScope = "body_after_prefix" | "total";
+/**
+ * How the Codex `config.toml` template manages the context window and automatic compaction
+ * (ADR-0009): `openai_default` writes no context key (recommended); `large_window` writes the
+ * preset's larger window with scope `total` and is offered only when IT enabled it.
+ */
+export type ContextStrategy = "openai_default" | "large_window";
 
 /**
  * Inputs of the Codex `config.toml` template. Deliberately carries no API key: the rendered
@@ -514,18 +543,35 @@ export interface CodexConfigRequest {
   baseUrl: string;
   model: string;
   reasoningEffort: string;
-  autoCompactScope: AutoCompactScope;
+  contextStrategy: ContextStrategy;
+}
+
+/** The context numbers one strategy gives Codex — what the card quotes. */
+export interface ContextStrategyInfo {
+  strategy: ContextStrategy;
+  /** Window Codex works with: the written `model_context_window`, else the catalog default. */
+  contextWindow: number;
+  /** Where automatic compaction starts (written limit clamped to 90 %, else 90 % of the window). */
+  autoCompactTokenLimit: number;
+  /** 95 % of the window: compaction is forced here, and `/status` reports it as the window. */
+  usableContextWindow: number;
+  /** Whether the template writes the context keys (`false`: Codex's own defaults apply). */
+  writesKeys: boolean;
 }
 
 /**
  * Response of `get_codex_config_template`: the rendered `config.toml` (still carrying the
- * `<API-KEY>` placeholder) plus the two limits it embeds, so the UI quotes them in its copy
- * instead of hard-coding the numbers a second time.
+ * `<API-KEY>` placeholder), the strategy it rendered, and the numbers of every strategy on
+ * offer, so the UI quotes them instead of hard-coding them.
  */
 export interface CodexConfigTemplate {
   toml: string;
-  modelContextWindow: number;
-  modelAutoCompactTokenLimit: number;
+  /** The rendered strategy — `openai_default` when the requested one is not on offer. */
+  contextStrategy: ContextStrategy;
+  /** Every strategy this preset offers, recommended first. */
+  contextStrategies: ContextStrategyInfo[];
+  /** Input size above which OpenAI bills the whole request at long-context rates. */
+  longContextThreshold: number;
 }
 
 // ---------------------------------------------------------------------------

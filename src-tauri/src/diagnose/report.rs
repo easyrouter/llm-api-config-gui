@@ -638,7 +638,7 @@ mod tests {
         // Pipes inside cells are escaped so the table stays intact.
         assert!(md.contains("\\| pipe"), "{md}");
         assert_eq!(report.app_version, "0.1.0");
-        assert!(!report.generated_at.is_empty());
+        assert_ne!(report.generated_at.len(), 0);
     }
 
     #[test]
@@ -750,8 +750,8 @@ name = "Other"
         );
         assert!(summarize_codex_config("not = = toml").is_none());
         let empty = summarize_codex_config("").expect("empty toml parses");
-        assert!(empty.top_level_keys.is_empty());
-        assert!(empty.providers.is_empty());
+        assert_eq!(empty.top_level_keys.len(), 0, "{:?}", empty.top_level_keys);
+        assert_eq!(empty.providers.len(), 0, "{:?}", empty.providers);
     }
 
     #[test]

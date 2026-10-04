@@ -345,6 +345,7 @@ mod tests {
             default_model: String::new(),
             default_reasoning_effort: String::new(),
             claude_code: crate::models::ClaudeCodeGateway::default(),
+            codex_large_context: crate::models::CodexLargeContext::default(),
         };
         let v = check_gateway(&client, &bad, &mirrors).await;
         assert_eq!(v.code, "network.unreachable");

@@ -320,7 +320,7 @@ mod tests {
     fn ok_carries_version_and_missing_offers_install_and_download() {
         let ok = evaluate(&spec(), Some(&app()), Path::new("/x"), false);
         assert_eq!(ok.params.get("version").map(String::as_str), Some("3.2.1"));
-        assert!(ok.fixes.is_empty());
+        assert_eq!(ok.fixes.len(), 0, "{:?}", ok.fixes);
 
         let missing = evaluate(&spec(), None, Path::new("/x"), false);
         assert_eq!(

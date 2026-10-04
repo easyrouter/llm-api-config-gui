@@ -369,6 +369,17 @@ mod tests {
     }
 
     #[test]
+    fn embedded_preset_keeps_the_large_codex_window_off_until_it_confirms() {
+        // ADR-0009: OpenAI's defaults only, until IT confirms every gateway route accepts the
+        // larger window (TODO(IT) in app-config.json).
+        let cfg = embedded().expect("embedded config");
+        let large = &cfg.gateway.codex_large_context;
+        assert!(!large.enabled);
+        assert_eq!(large.context_window, 372_000);
+        assert_eq!(large.auto_compact_token_limit, 300_000);
+    }
+
+    #[test]
     fn claude_code_falls_back_to_the_shared_values_when_unset() {
         let mut cfg = embedded().expect("embedded config");
         cfg.gateway.claude_code = crate::models::ClaudeCodeGateway::default();

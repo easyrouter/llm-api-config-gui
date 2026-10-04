@@ -1532,10 +1532,30 @@ mod tests {
             extract_model_ids(r#"{"models":[{"id":"m1"},{"id":"m2"}]}"#),
             vec!["m1", "m2"]
         );
-        assert!(extract_model_ids("").is_empty());
-        assert!(extract_model_ids("not json").is_empty());
-        assert!(extract_model_ids(r#"{"data":"nope"}"#).is_empty());
-        assert!(extract_model_ids(r#"{"data":[]}"#).is_empty());
+        assert_eq!(
+            extract_model_ids("").len(),
+            0,
+            "{:?}",
+            extract_model_ids("")
+        );
+        assert_eq!(
+            extract_model_ids("not json").len(),
+            0,
+            "{:?}",
+            extract_model_ids("not json")
+        );
+        assert_eq!(
+            extract_model_ids(r#"{"data":"nope"}"#).len(),
+            0,
+            "{:?}",
+            extract_model_ids(r#"{"data":"nope"}"#)
+        );
+        assert_eq!(
+            extract_model_ids(r#"{"data":[]}"#).len(),
+            0,
+            "{:?}",
+            extract_model_ids(r#"{"data":[]}"#)
+        );
     }
 
     #[test]
@@ -1595,7 +1615,7 @@ mod tests {
         server.join().expect("server thread");
         assert!(!list.gateway.ok);
         assert_eq!(list.gateway.error_class, Some(ErrorClass::Auth));
-        assert!(list.models.is_empty());
+        assert_eq!(list.models.len(), 0, "{:?}", list.models);
         assert!(!list.gateway.message.unwrap_or_default().contains(KEY));
     }
 
@@ -1609,7 +1629,7 @@ mod tests {
         };
         let list = list_models(&test_client(), &req).await;
         assert_eq!(list.gateway.error_class, Some(ErrorClass::NotHttps));
-        assert!(list.models.is_empty());
+        assert_eq!(list.models.len(), 0, "{:?}", list.models);
     }
 
     // ----- terminals -------------------------------------------------------------------

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatBytes, formatDuration, formatPercent, maskSecret } from "./format";
+import { formatBytes, formatDuration, formatPercent, formatTokens, maskSecret } from "./format";
 
 describe("formatBytes", () => {
   it.each([
@@ -40,6 +40,22 @@ describe("formatDuration", () => {
     [3_720_000, "1 h 02 min"],
   ])("formats %s ms as %s", (input, expected) => {
     expect(formatDuration(input)).toBe(expected);
+  });
+});
+
+describe("formatTokens", () => {
+  it.each([
+    [272_000, "272K"],
+    [244_800, "245K"],
+    [258_400, "258K"],
+    [353_400, "353K"],
+    [1_050_000, "1050K"],
+    [499, "0K"],
+    [0, "0K"],
+    [-1, "0K"],
+    [Number.NaN, "0K"],
+  ])("formats %s as %s", (input, expected) => {
+    expect(formatTokens(input)).toBe(expected);
   });
 });
 

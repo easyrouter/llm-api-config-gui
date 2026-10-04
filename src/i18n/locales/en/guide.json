@@ -13,7 +13,7 @@
     "doneEditing": "Done",
     "resetToPreset": "Reset to default",
     "providerName": "Provider name",
-    "providerNameHint": "Any name works; this one keeps things recognisable later.",
+    "providerNameHint": "Any name works (for Codex, not exactly OpenAI or azure — those are replaced automatically); this one keeps things recognisable later.",
     "baseUrl": "API address (Base URL)",
     "baseUrlHint": "Use it exactly as shown — do not add or remove a trailing slash or /v1.",
     "protocol": "Protocol / request format",
@@ -53,24 +53,30 @@
   },
   "config": {
     "title": "Codex config.toml template (recommended)",
-    "description": "This configuration routes Codex through the service gateway while keeping most official features, and enables the priority tier, the large context window and auto-compaction for {{model}}. Press “Apply to Codex on this machine” to write ~/.codex/config.toml after confirming (the previous file is backed up), or copy it and paste it yourself into the “config.toml / configuration” field of the Codex provider in CC Switch. The content is editable — for example, set a more radical model_auto_compact_token_limit or change any other default.",
+    "description": "This configuration routes Codex through the service gateway while keeping most official features: the priority tier for {{model}}, with automatic compaction following the context strategy below. Press “Apply to Codex on this machine” to write ~/.codex/config.toml after confirming (the previous file is backed up), or copy it and paste it yourself into the “config.toml / configuration” field of the Codex provider in CC Switch. The content is editable.",
     "modelFallback": "the selected model",
-    "scopeLabel": "Auto-compaction accounting (model_auto_compact_token_limit_scope)",
-    "scopeHint": "Choose what the {{limit}} auto-compaction threshold counts; when unsure, keep the recommended value.",
-    "scope": {
-      "body_after_prefix": {
-        "label": "body_after_prefix (recommended)",
-        "explanation": "Counts only the conversation body after the cached prefix. More accurate with prompt caching and makes the most of the {{contextWindow}} context — the right choice in most cases."
+    "context": {
+      "title": "Context and automatic compaction",
+      "learnMore": "How it works",
+      "intro": "Every request Codex sends carries its instruction files, the chat so far and tool output; the most it can hold is the “context window”. When the window is nearly full, Codex compacts automatically: it replaces older history with a hand-off summary and keeps working, so some older detail is lost.",
+      "choiceLabel": "Context strategy",
+      "strategy": {
+        "openai_default": {
+          "label": "OpenAI default (recommended)",
+          "explanation": "The template writes no context settings, so Codex uses the defaults OpenAI set for the model: a {{window}} context window, automatic compaction at about {{limit}}, and compaction at {{usable}} at the latest. Requests normally stay below {{longContext}} (OpenAI's list price charges more for the whole request above {{longContext}} input tokens), and a bigger window means re-sending more every turn, which costs more."
+        },
+        "large_window": {
+          "label": "Large window (long tasks)",
+          "explanation": "Writes a {{window}} context window with automatic compaction at {{limit}} (scope total), and compaction at {{usable}} at the latest. It compacts less often, which suits one task that runs for a long time; in exchange every turn sends more and costs more, and at OpenAI's list price requests above {{longContext}} input tokens are charged more for the whole request. IT turned this option on after confirming the service gateway accepts it; if a long chat keeps failing with a context-length error, switch back to “OpenAI default”."
+        }
       },
-      "total": {
-        "label": "total",
-        "explanation": "Counts the whole request (prefix + body), so compaction triggers earlier. Pick this if you often hit context-exceeded errors or the gateway limits by total tokens."
-      }
+      "tips": "Habits that help: type /compact when you finish a stage of work; start a new chat for each new task (a new chat in the Codex app or IDE extension, /new in the CLI); check the remaining context with /status. Compaction can happen noticeably earlier than the numbers above, sometimes by tens of thousands of tokens — that is normal. Before pasting a long log into an already long chat, run /compact first. Changed settings take effect in the next new chat.",
+      "ccSwitch": "When you edit the Codex provider in CC Switch, leave “1M Context Window” and “Enable remote compaction” unticked. The first sets a 1M context window — far above the recommendation, more expensive, and possibly more than the service gateway accepts. The second renames the provider to OpenAI so Codex switches to remote compaction, which can fail through the service gateway or leave a long chat unable to continue."
     },
     "templateLabel": "config.toml content (editable)",
     "keySubstitution": "Copying or applying replaces <API-KEY> with the real key entered above; the real key is never shown on screen.",
     "keyMissing": "No API key entered above yet: the copied content keeps the <API-KEY> placeholder (replace it yourself after pasting); one-click apply needs the key first.",
-    "edited": "Edited by hand: changing the values above or the accounting scope will not overwrite your changes; use “Restore generated template” when needed.",
+    "edited": "Edited by hand: changing the values above or the context strategy will not overwrite your changes; use “Restore generated template” when needed.",
     "regenerate": "Restore generated template",
     "loading": "Generating the template…",
     "apply": {
@@ -84,6 +90,10 @@
         "upToDate": "already the latest template",
         "differs": "differs from the template ({{n}} backups)",
         "exists": "present ({{n}} backups; enter the API key to compare with the template)"
+      },
+      "liveContext": {
+        "removes": "Your ~/.codex/config.toml currently says: {{settings}}. Applying removes these lines so Codex uses OpenAI's defaults.",
+        "replaces": "Your ~/.codex/config.toml currently says: {{settings}}. Applying replaces them with the large-window settings selected above."
       },
       "confirmTitle": "Write the Codex configuration on this machine?",
       "confirmBody": "Below is the exact content that will be written (the key is masked in the preview; the full key is written). The existing file is backed up first as config.toml.seedrouter-<timestamp>.bak and can be restored at any time.",
@@ -194,7 +204,7 @@
   },
   "apply_codex_config": {
     "title": "Apply the config.toml template with one click",
-    "body": "Go back to the “Codex config.toml template” card above and press “Apply to Codex on this machine”. It writes the service gateway URL, the priority tier, the large context window and the other settings into ~/.codex/config.toml; the previous file is backed up automatically and can be restored at any time."
+    "body": "Go back to the “Codex config.toml template” card above and press “Apply to Codex on this machine”. It writes the service gateway URL, the priority tier and the chosen context strategy into ~/.codex/config.toml; the previous file is backed up automatically and can be restored at any time."
   },
   "close_terminals": {
     "title": "Close every terminal window",

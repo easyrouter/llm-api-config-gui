@@ -48,6 +48,15 @@ export function formatDuration(ms: number): string {
 }
 
 /**
+ * Formats a token count in thousands for prose: `272000` → `272K`, `244800` → `245K`,
+ * `1050000` → `1050K`. Invalid or negative input renders as `0K`.
+ */
+export function formatTokens(tokens: number): string {
+  if (!Number.isFinite(tokens) || tokens <= 0) return "0K";
+  return `${Math.round(tokens / 1000)}K`;
+}
+
+/**
  * Formats a 0..1 ratio as an integer percentage (`0.42` → `42%`), clamped to 0..100.
  */
 export function formatPercent(ratio: number): string {
