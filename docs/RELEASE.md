@@ -14,6 +14,7 @@ download page (PRD #11). Every distributed build must be signed (PRD #12).
 
 | branch | version | tag      |
 | ------ | ------- | -------- |
+| `main` | `0.2.0` | `v0.2.0` |
 | `main` | `0.1.1` | `v0.1.1` |
 | `main` | `0.1.0` | `v0.1.0` |
 
@@ -21,6 +22,9 @@ download page (PRD #11). Every distributed build must be signed (PRD #12).
 Development continues on `pilot` and lands in `main` per release.
 `v0.1.1` (2026-09-12) followed the same path: PR #4 merged into `pilot`, the version bump
 committed there, `main` fast-forwarded and tagged.
+`v0.2.0` (2026-10-04) followed it (PR #6, Codex context strategy, ADR-0009). On the PM's
+instruction the GitHub releases of `v0.1.0` and `v0.1.1` were deleted once `v0.2.0` was
+published, so their installers are no longer offered; the tags stay as history.
 
 The pilot rounds `v0.1.0-test.1` … `v0.1.0-test.7` and their GitHub releases were deleted when
 `v0.1.0` was cut — everything they contained is an ancestor of this tag. Only one build has

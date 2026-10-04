@@ -5,6 +5,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-04
+
+Codex context management follows OpenAI's defaults (ADR-0009): the `config.toml` template no
+longer writes the 372K window / 300K limit / `body_after_prefix` of v0.1.x, the configure card and
+a new help page explain the context window and automatic compaction, and a larger window is
+available behind an IT preset flag. Also the first release of the open-sourced repo
+(Apache-2.0). Built unsigned (Q-12), so published as a pre-release; the GitHub releases of
+v0.1.0 and v0.1.1 were taken down when it shipped.
+
 ### Changed (Codex context strategy, ADR-0009)
 
 - **The Codex `config.toml` template no longer writes context keys by default.** The PM template
