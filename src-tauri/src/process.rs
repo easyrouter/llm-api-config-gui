@@ -1013,7 +1013,7 @@ mod tests {
     async fn fresh_session_env_has_path() {
         let env = fresh_session_env().await.expect("fresh env");
         let path = get_env_var(&env, "PATH").expect("PATH present");
-        assert!(!path.is_empty());
+        assert_ne!(path.len(), 0);
         if cfg!(windows) {
             assert!(!path.contains('%'), "PATH must be expanded: {path}");
             assert!(get_env_var(&env, "SystemRoot").is_some());

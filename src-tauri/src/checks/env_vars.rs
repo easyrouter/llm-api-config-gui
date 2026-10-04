@@ -475,7 +475,7 @@ mod tests {
         assert_eq!(v.code, "env_vars.clean");
         assert_eq!(v.status, crate::models::CheckStatus::Pass);
         assert_eq!(v.details, vec!["HTTPS_PROXY ← process"]);
-        assert!(v.fixes.is_empty());
+        assert_eq!(v.fixes.len(), 0, "{:?}", v.fixes);
     }
 
     #[test]
@@ -556,7 +556,12 @@ export OPENAI_API_KEY
                 ("OPENAI_BASE_URL".to_owned(), 6),
             ]
         );
-        assert!(scan_rc_content("", &names()).is_empty());
+        assert_eq!(
+            scan_rc_content("", &names()).len(),
+            0,
+            "{:?}",
+            scan_rc_content("", &names())
+        );
     }
 
     #[test]
@@ -616,7 +621,12 @@ $env:PATH = \"$env:PATH;C:\\x\"
         std::fs::write(&file, "alias ll=ls\nexport OPENAI_API_KEY=sk-1\n").expect("write");
         let hits = scan_rc_file(&file, &names());
         assert_eq!(hits, vec![("OPENAI_API_KEY".to_owned(), 2)]);
-        assert!(scan_rc_file(&dir.path().join("missing"), &names()).is_empty());
+        assert_eq!(
+            scan_rc_file(&dir.path().join("missing"), &names()).len(),
+            0,
+            "{:?}",
+            scan_rc_file(&dir.path().join("missing"), &names())
+        );
         assert_eq!(rc_location(&file, Some(dir.path()), 2), "~/.zshrc:2");
         assert_eq!(
             rc_location(Path::new("/etc/zshrc"), Some(dir.path()), 7),
@@ -646,7 +656,7 @@ $env:PATH = \"$env:PATH;C:\\x\"
         let masked = findings[0].value_masked.clone().unwrap_or_default();
         assert!(masked.contains('*'), "{masked}");
         assert!(!findings[1].present_in_session);
-        assert!(findings[1].sources.is_empty());
+        assert_eq!(findings[1].sources.len(), 0, "{:?}", findings[1].sources);
         assert!(findings[1].value_masked.is_none());
     }
 

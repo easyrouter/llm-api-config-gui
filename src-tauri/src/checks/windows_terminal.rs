@@ -87,7 +87,7 @@ mod tests {
             v.params.get("path").map(String::as_str),
             Some(r"C:\Users\me\WindowsApps\wt.exe")
         );
-        assert!(v.fixes.is_empty());
+        assert_eq!(v.fixes.len(), 0, "{:?}", v.fixes);
     }
 
     #[test]

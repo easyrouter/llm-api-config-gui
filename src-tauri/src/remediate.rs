@@ -1186,7 +1186,7 @@ mod tests {
             .await
             .expect("plan");
         assert_eq!(plan.dir, dir.path().to_string_lossy());
-        assert!(!plan.display_command.is_empty());
+        assert_ne!(plan.display_command.len(), 0);
         assert!(!plan.already_present);
         // A plan whose rendering was tampered with is refused.
         let mut tampered = plan.clone();

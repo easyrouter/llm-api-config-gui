@@ -712,7 +712,12 @@ mod tests {
             vec![2, 0, 3]
         );
         assert_eq!(checksum_candidates(&list, "other.dmg"), vec![0, 3]);
-        assert!(checksum_candidates(&names(&["a.exe"]), "a.exe").is_empty());
+        assert_eq!(
+            checksum_candidates(&names(&["a.exe"]), "a.exe").len(),
+            0,
+            "{:?}",
+            checksum_candidates(&names(&["a.exe"]), "a.exe")
+        );
     }
 
     #[test]

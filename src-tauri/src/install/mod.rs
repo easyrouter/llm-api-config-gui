@@ -761,7 +761,12 @@ mod tests {
         assert!(node_install_dirs(Platform::Macos)
             .iter()
             .any(|p| p == Path::new("/opt/homebrew/bin")));
-        assert!(node_install_dirs(Platform::Unknown).is_empty());
+        assert_eq!(
+            node_install_dirs(Platform::Unknown).len(),
+            0,
+            "{:?}",
+            node_install_dirs(Platform::Unknown)
+        );
         for dir in node_install_dirs(Platform::Windows) {
             assert!(dir.ends_with("nodejs"));
         }

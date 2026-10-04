@@ -309,9 +309,9 @@ mod tests {
         )
         .expect("plan");
         assert_eq!(plan.target, InstallTarget::Node);
-        assert!(plan.program.is_empty());
-        assert!(plan.args.is_empty());
-        assert!(plan.display_command.is_empty());
+        assert_eq!(plan.program.len(), 0, "{:?}", plan.program);
+        assert_eq!(plan.args.len(), 0, "{:?}", plan.args);
+        assert_eq!(plan.display_command.len(), 0, "{:?}", plan.display_command);
         assert!(plan.registry.is_none());
         assert!(!plan.requires_admin);
         assert_eq!(plan.explanation_code, CODE_NODE_DOWNLOAD_PAGE);
@@ -359,7 +359,7 @@ mod tests {
         let mut c = ctx(Platform::Windows);
         c.homebrew = Some("brew".to_owned());
         let plan = build_plan(InstallTarget::Node, &cfg(), &mirrors(), &c).expect("plan");
-        assert!(plan.program.is_empty());
+        assert_eq!(plan.program.len(), 0, "{:?}", plan.program);
         assert_eq!(plan.explanation_code, CODE_NODE_DOWNLOAD_PAGE);
     }
 
@@ -545,8 +545,8 @@ mod tests {
         )
         .expect("plan");
         assert_eq!(plan.target, InstallTarget::CcSwitch);
-        assert!(plan.program.is_empty());
-        assert!(plan.display_command.is_empty());
+        assert_eq!(plan.program.len(), 0, "{:?}", plan.program);
+        assert_eq!(plan.display_command.len(), 0, "{:?}", plan.display_command);
         assert!(plan.registry.is_none());
         assert!(!plan.requires_admin);
         assert_eq!(plan.explanation_code, CODE_CC_SWITCH_DOWNLOAD);

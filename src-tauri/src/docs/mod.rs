@@ -677,7 +677,7 @@ mod tests {
         assert_eq!(page.lang, "zh-CN");
         assert_eq!(page.id, "verify");
         assert!(page.markdown.starts_with("# "));
-        assert!(!page.title.is_empty());
+        assert_ne!(page.title.len(), 0);
     }
 
     #[tokio::test]
