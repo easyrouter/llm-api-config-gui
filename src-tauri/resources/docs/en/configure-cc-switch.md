@@ -34,13 +34,15 @@ Claude Code has a single path: the custom provider.
 
 ## Apply config.toml (Codex only)
 
-The "Codex config.toml template" card on the "Configure" page generates the recommended configuration: the service gateway as a provider, while keeping the official features (priority tier, large context window, auto-compaction). The key inside the template is the placeholder `<API-KEY>`; every other value can be edited first. When you click "Apply to this machine":
+The "Codex config.toml template" card on the "Configure" page generates the recommended configuration: the service gateway as a provider, the priority tier turned on, and the context window and automatic compaction handled according to the context strategy on the card. The default strategy, "OpenAI default (recommended)", writes no context settings, so Codex uses OpenAI's defaults (a 272K context window, with automatic compaction at about 245K). The key inside the template is the placeholder `<API-KEY>`; every other value can be edited first. When you click "Apply to Codex on this machine":
 
 1. the real key is substituted in memory on your machine and never displayed;
 2. if `~/.codex/config.toml` already exists it is backed up as `config.toml.seedrouter-<timestamp>.bak`;
 3. the new file is written.
 
-"Restore previous backup" undoes it at any time. **CC Switch may rewrite this file when you switch providers** — after switching, come back and click "Apply" again; the card shows "differs from template" when needed. This is the only file the tool ever writes inside `~/.codex/`, and only after you click; details in "One-click actions explained".
+"Restore previous backup" undoes it at any time. **CC Switch may rewrite this file when you switch providers** — after switching, come back and click "Apply" again; the card shows "differs from the template" when needed. This is the only file the tool ever writes inside `~/.codex/`, and only after you click; details in "One-click actions explained".
+
+When you edit this provider in CC Switch, **leave "1M Context Window" and "Enable remote compaction" unticked**: the first changes the context window to 1M, far above the recommended value (Codex treats it as 872K); the second renames the provider to `OpenAI` and makes Codex switch to remote compaction. For what each setting means and more things to watch out for, see [Context & auto-compaction](context-compaction).
 
 ## Codex vs Claude Code
 

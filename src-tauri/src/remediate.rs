@@ -32,9 +32,9 @@ use crate::checks::env_vars::{
 };
 use crate::error::{AppError, AppResult};
 use crate::models::{
-    AppConfig, CodexConfigApplyResult, CodexConfigStatus, EnvCleanupAction, EnvCleanupItem,
-    EnvCleanupPlan, EnvCleanupResult, EnvVarSource, EnvVarSourceKind, PathRepairPlan,
-    PathRepairResult, Platform, ToolId,
+    AppConfig, CodexConfigApplyResult, CodexConfigStatus, CodexContextSettings, EnvCleanupAction,
+    EnvCleanupItem, EnvCleanupPlan, EnvCleanupResult, EnvVarSource, EnvVarSourceKind,
+    PathRepairPlan, PathRepairResult, Platform, ToolId,
 };
 use crate::platform;
 use crate::process::{self, CommandSpec};
@@ -758,6 +758,33 @@ pub fn same_config(a: &str, b: &str) -> bool {
     norm(a) == norm(b)
 }
 
+/// Marker shown instead of a scope value Codex does not accept — the string comes from the
+/// user's file and could hold anything, so it is never echoed (hard rule 3).
+const UNKNOWN_SCOPE_MARKER: &str = "[REDACTED]";
+
+/// The top-level context keys of a `config.toml` text (ADR-0009). `None` when the text is not
+/// valid TOML or sets none of them. The scope passes through only when it is one of the two
+/// values Codex accepts (`total`, `body_after_prefix`). Pure.
+pub fn live_context_settings(text: &str) -> Option<CodexContextSettings> {
+    let table: toml::Table = toml::from_str(text).ok()?;
+    let integer = |key: &str| table.get(key).and_then(toml::Value::as_integer);
+    let settings = CodexContextSettings {
+        model_context_window: integer("model_context_window"),
+        model_auto_compact_token_limit: integer("model_auto_compact_token_limit"),
+        model_auto_compact_token_limit_scope: table
+            .get("model_auto_compact_token_limit_scope")
+            .and_then(toml::Value::as_str)
+            .map(|scope| match scope {
+                "total" | "body_after_prefix" => scope.to_owned(),
+                _ => UNKNOWN_SCOPE_MARKER.to_owned(),
+            }),
+    };
+    let any = settings.model_context_window.is_some()
+        || settings.model_auto_compact_token_limit.is_some()
+        || settings.model_auto_compact_token_limit_scope.is_some();
+    any.then_some(settings)
+}
+
 /// Current state of the live file; `template` (optional) enables `matches_template`.
 pub fn codex_config_status(
     config: &AppConfig,
@@ -778,6 +805,7 @@ pub fn codex_config_status(
             .map(|p| p.to_string_lossy().into_owned())
             .collect(),
         matches_template: matches,
+        live_context: current.as_deref().and_then(live_context_settings),
     })
 }
 
@@ -1040,6 +1068,55 @@ mod tests {
     }
 
     #[test]
+    fn live_context_settings_reads_only_the_top_level_context_keys() {
+        // what v0.1.0 / v0.1.1 of this app wrote (ADR-0009 replaced it)
+        let old_template = "model = \"gpt-6-astra\"\nmodel_context_window = 372000\n\
+             model_auto_compact_token_limit = 300000\n\
+             model_auto_compact_token_limit_scope = \"body_after_prefix\"\n\n\
+             [model_providers.cliproxyapi]\nname = \"SeedRouter\"\n";
+        assert_eq!(
+            live_context_settings(old_template),
+            Some(CodexContextSettings {
+                model_context_window: Some(372_000),
+                model_auto_compact_token_limit: Some(300_000),
+                model_auto_compact_token_limit_scope: Some("body_after_prefix".into()),
+            })
+        );
+        // only one key set
+        assert_eq!(
+            live_context_settings("model_context_window = 1000000\n"),
+            Some(CodexContextSettings {
+                model_context_window: Some(1_000_000),
+                model_auto_compact_token_limit: None,
+                model_auto_compact_token_limit_scope: None,
+            })
+        );
+        // a scope Codex does not accept is never echoed — it could be anything, even a key
+        for odd in ["sk-live-abcdefgh1234", "company-key-XYZ-9876", "Total"] {
+            let text = format!("model_auto_compact_token_limit_scope = \"{odd}\"\n");
+            let settings = live_context_settings(&text).expect("a scope is set");
+            assert_eq!(
+                settings.model_auto_compact_token_limit_scope.as_deref(),
+                Some("[REDACTED]"),
+                "{odd}"
+            );
+        }
+        assert_eq!(
+            live_context_settings("model_auto_compact_token_limit_scope = \"total\"\n")
+                .and_then(|s| s.model_auto_compact_token_limit_scope)
+                .as_deref(),
+            Some("total")
+        );
+        // none set, keys only inside a table (Codex ignores those too), or not TOML at all
+        assert_eq!(live_context_settings("model = \"gpt-6-astra\"\n"), None);
+        assert_eq!(
+            live_context_settings("[model_providers.custom]\nmodel_context_window = 1000000\n"),
+            None
+        );
+        assert_eq!(live_context_settings("not = valid = toml"), None);
+    }
+
+    #[test]
     fn apply_and_restore_round_trip() {
         let dir = tempfile::tempdir().expect("tempdir");
         let mut cfg = crate::config::embedded().expect("config");
@@ -1053,6 +1130,7 @@ mod tests {
         let status = codex_config_status(&cfg, Some("model = \"x\"")).expect("status");
         assert!(!status.exists);
         assert_eq!(status.matches_template, None);
+        assert_eq!(status.live_context, None);
 
         assert!(apply_codex_config(&cfg, "not = valid = toml").is_err());
         assert!(apply_codex_config(&cfg, "   ").is_err());

@@ -109,8 +109,9 @@ export const testConnectivity = (request: GatewayProbeRequest) =>
 export const listGatewayModels = (request: GatewayProbeRequest) =>
   invoke<ModelList>("list_gateway_models", { request });
 /**
- * Recommended Codex config.toml: the editable template (key placeholder substituted on copy)
- * plus the two limits it embeds, quoted by the card's copy.
+ * Recommended Codex config.toml: the editable template (key placeholder substituted on copy),
+ * the context strategy it rendered, every offered strategy's numbers and the long-context
+ * threshold, quoted by the card's copy (ADR-0009).
  */
 export const getCodexConfigTemplate = (request: CodexConfigRequest) =>
   invoke<CodexConfigTemplate>("get_codex_config_template", { request });

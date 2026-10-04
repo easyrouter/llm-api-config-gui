@@ -93,6 +93,49 @@ pub struct GatewayPreset {
     pub default_reasoning_effort: String,
     #[serde(default)]
     pub claude_code: ClaudeCodeGateway,
+    /// Optional larger Codex context window, offered next to OpenAI's defaults only when IT
+    /// enabled it (ADR-0009).
+    #[serde(default)]
+    pub codex_large_context: CodexLargeContext,
+}
+
+/// `gateway.codexLargeContext`: a larger Codex context window the `config.toml` template may
+/// offer as [`ContextStrategy::LargeWindow`] (for models whose Codex window can grow). Off by
+/// default — every gateway route serving the Codex models must accept `context_window` input
+/// tokens plus output: if the gateway rejects an over-long request with a synchronous HTTP 400
+/// (not yet tested; a streamed `response.failed` would be recoverable), Codex 0.160 cannot
+/// recover the thread (ADR-0009).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexLargeContext {
+    #[serde(default)]
+    pub enabled: bool,
+    /// `model_context_window` the strategy writes.
+    #[serde(default = "CodexLargeContext::default_context_window")]
+    pub context_window: u64,
+    /// `model_auto_compact_token_limit` the strategy writes (scope `total`).
+    #[serde(default = "CodexLargeContext::default_auto_compact_token_limit")]
+    pub auto_compact_token_limit: u64,
+}
+
+impl CodexLargeContext {
+    const fn default_context_window() -> u64 {
+        372_000
+    }
+
+    const fn default_auto_compact_token_limit() -> u64 {
+        300_000
+    }
+}
+
+impl Default for CodexLargeContext {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            context_window: Self::default_context_window(),
+            auto_compact_token_limit: Self::default_auto_compact_token_limit(),
+        }
+    }
 }
 
 /// Claude Code's own gateway defaults (`gateway.claudeCode`). It speaks the Anthropic Messages
@@ -714,14 +757,17 @@ pub struct CcSwitchImportPreview {
     pub app: String,
 }
 
-/// Scope of Codex's `model_auto_compact_token_limit`: what the auto-compact threshold counts.
+/// How the Codex `config.toml` template manages the context window and automatic compaction
+/// (ADR-0009).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum AutoCompactScope {
-    /// Only the conversation body after the cached prefix (recommended default).
-    BodyAfterPrefix,
-    /// The whole request, prefix included — compaction triggers earlier.
-    Total,
+pub enum ContextStrategy {
+    /// OpenAI's defaults (recommended): the template writes no context key, so Codex uses the
+    /// model's catalog window and compacts at 90 % of it.
+    OpenaiDefault,
+    /// The larger window of `gateway.codexLargeContext` with scope `total` — offered only when
+    /// IT enabled it, and only for models whose Codex window can grow.
+    LargeWindow,
 }
 
 /// Inputs of the Codex `config.toml` template (`guide::codex_config_template`). Deliberately
@@ -734,19 +780,53 @@ pub struct CodexConfigRequest {
     pub base_url: String,
     pub model: String,
     pub reasoning_effort: String,
-    pub auto_compact_scope: AutoCompactScope,
+    pub context_strategy: ContextStrategy,
+}
+
+/// The context numbers one [`ContextStrategy`] gives Codex — what the card quotes, so the copy
+/// never hard-codes them.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ContextStrategyInfo {
+    pub strategy: ContextStrategy,
+    /// Context window Codex works with: the written `model_context_window`, or the model's
+    /// catalog default when the template writes none.
+    pub context_window: u64,
+    /// Where automatic compaction starts: the written `model_auto_compact_token_limit` (clamped
+    /// to 90 % of the window, as Codex does for scope `total`), else 90 % of the window.
+    pub auto_compact_token_limit: u64,
+    /// 95 % of the window: Codex compacts here at the latest, and `/status` reports it as the
+    /// window.
+    pub usable_context_window: u64,
+    /// Whether the template writes the context keys (`false`: Codex's own defaults apply).
+    pub writes_keys: bool,
 }
 
 /// Response of `get_codex_config_template` (`guide::codex_config_template_response`): the
-/// rendered `config.toml` — still carrying the `<API-KEY>` placeholder — plus the two limits it
-/// embeds (`model_context_window` / `model_auto_compact_token_limit`), so the UI quotes them in
-/// its copy instead of hard-coding the numbers a second time.
+/// rendered `config.toml` — still carrying the `<API-KEY>` placeholder — plus the context
+/// strategies on offer with their numbers, so the UI quotes them instead of hard-coding them.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CodexConfigTemplate {
     pub toml: String,
-    pub model_context_window: u64,
-    pub model_auto_compact_token_limit: u64,
+    /// The strategy rendered into `toml` — `openai_default` when the requested one is not on
+    /// offer.
+    pub context_strategy: ContextStrategy,
+    /// Every strategy this preset offers, recommended first.
+    pub context_strategies: Vec<ContextStrategyInfo>,
+    /// Input size above which OpenAI bills the whole request at long-context rates.
+    pub long_context_threshold: u64,
+}
+
+/// The context keys found in the live `~/.codex/config.toml` (top level only), so the card can
+/// point out settings that differ from the template — e.g. the 372000 / 300000 /
+/// `body_after_prefix` values earlier versions of this app wrote.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CodexContextSettings {
+    pub model_context_window: Option<i64>,
+    pub model_auto_compact_token_limit: Option<i64>,
+    pub model_auto_compact_token_limit_scope: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1116,6 +1196,8 @@ pub struct CodexConfigStatus {
     /// whitespace), `Some(false)` when it differs, `None` when no template was supplied or the
     /// file is absent.
     pub matches_template: Option<bool>,
+    /// Context keys of the live file; `None` when it is absent, unparsable or sets none of them.
+    pub live_context: Option<CodexContextSettings>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1162,22 +1244,68 @@ mod tests {
     }
 
     /// `CodexConfigTemplate` crosses IPC with the names `src/lib/types.ts` reads; the card would
-    /// otherwise quote `undefined` for both limits.
+    /// otherwise quote `undefined` for every number.
     #[test]
     fn codex_config_template_fields_are_camel_case_like_the_typescript_mirror() {
         let value = serde_json::to_value(CodexConfigTemplate {
             toml: "model = \"gpt-6-astra\"\n".into(),
-            model_context_window: 372_000,
-            model_auto_compact_token_limit: 300_000,
+            context_strategy: ContextStrategy::OpenaiDefault,
+            context_strategies: vec![ContextStrategyInfo {
+                strategy: ContextStrategy::LargeWindow,
+                context_window: 372_000,
+                auto_compact_token_limit: 300_000,
+                usable_context_window: 353_400,
+                writes_keys: true,
+            }],
+            long_context_threshold: 272_000,
         })
         .expect("serialize");
         assert_eq!(value["toml"], "model = \"gpt-6-astra\"\n");
-        assert_eq!(value["modelContextWindow"], 372_000);
-        assert_eq!(value["modelAutoCompactTokenLimit"], 300_000);
-        assert!(value.get("model_context_window").is_none(), "{value}");
-        assert!(
-            value.get("model_auto_compact_token_limit").is_none(),
-            "{value}"
-        );
+        assert_eq!(value["contextStrategy"], "openai_default");
+        assert_eq!(value["longContextThreshold"], 272_000);
+        let info = &value["contextStrategies"][0];
+        assert_eq!(info["strategy"], "large_window");
+        assert_eq!(info["contextWindow"], 372_000);
+        assert_eq!(info["autoCompactTokenLimit"], 300_000);
+        assert_eq!(info["usableContextWindow"], 353_400);
+        assert_eq!(info["writesKeys"], true);
+        assert!(info.get("context_window").is_none(), "{value}");
+        assert!(value.get("long_context_threshold").is_none(), "{value}");
+    }
+
+    /// The request comes from the webview: the strategy travels in its snake_case wire form.
+    #[test]
+    fn codex_config_request_reads_the_strategy_wire_form() {
+        let req: CodexConfigRequest = serde_json::from_value(serde_json::json!({
+            "providerName": "SeedRouter",
+            "baseUrl": "https://seedrouter.net/v1",
+            "model": "gpt-6-astra",
+            "reasoningEffort": "medium",
+            "contextStrategy": "large_window",
+        }))
+        .expect("deserialize");
+        assert_eq!(req.context_strategy, ContextStrategy::LargeWindow);
+        let unknown = serde_json::from_value::<CodexConfigRequest>(serde_json::json!({
+            "providerName": "", "baseUrl": "", "model": "", "reasoningEffort": "",
+            "contextStrategy": "body_after_prefix",
+        }));
+        assert!(unknown.is_err(), "only the two strategies are accepted");
+    }
+
+    /// An IT override that predates `codexLargeContext` (or omits fields) keeps the option off
+    /// with the documented numbers.
+    #[test]
+    fn codex_large_context_defaults_to_off() {
+        let empty: CodexLargeContext = serde_json::from_str("{}").expect("deserialize");
+        assert_eq!(empty, CodexLargeContext::default());
+        assert!(!empty.enabled);
+        assert_eq!(empty.context_window, 372_000);
+        assert_eq!(empty.auto_compact_token_limit, 300_000);
+        let on: CodexLargeContext =
+            serde_json::from_str(r#"{"enabled": true, "contextWindow": 400000}"#)
+                .expect("deserialize");
+        assert!(on.enabled);
+        assert_eq!(on.context_window, 400_000);
+        assert_eq!(on.auto_compact_token_limit, 300_000);
     }
 }

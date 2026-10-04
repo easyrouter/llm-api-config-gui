@@ -307,7 +307,8 @@ pub async fn apply_env_cleanup(
     remediate::apply_env_cleanup(&plan, &cfg).await
 }
 
-/// State of `~/.codex/config.toml` (exists? backups? equals `template`?).
+/// State of `~/.codex/config.toml` (exists? backups? equals `template`? which context keys it
+/// sets — `liveContext`).
 #[tauri::command]
 pub fn codex_config_status(
     template: Option<String>,
@@ -404,9 +405,10 @@ pub async fn list_gateway_models(
 }
 
 /// Renders the recommended Codex `config.toml` template (editable in the UI before the user
-/// pastes it into CC Switch) together with the two limits it embeds, so the UI quotes them
-/// instead of hard-coding the numbers. Carries no key: the template contains a placeholder the
-/// UI substitutes at copy time.
+/// applies it or pastes it into CC Switch) together with the context strategy it rendered, the
+/// numbers of every strategy on offer and the long-context price threshold, so the UI quotes
+/// them instead of hard-coding them (ADR-0009). Carries no key: the template contains a
+/// placeholder the UI substitutes at copy time.
 #[tauri::command]
 pub fn get_codex_config_template(
     request: CodexConfigRequest,

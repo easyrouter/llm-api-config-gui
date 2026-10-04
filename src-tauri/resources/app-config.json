@@ -16,6 +16,12 @@
       "$comment": "Claude Code speaks the Anthropic Messages protocol and appends /v1/messages to the base URL itself, so its address is the site root — a base ending in /v1 would produce /v1/v1/messages (404). An empty field falls back to the shared value above.",
       "baseUrl": "https://seedrouter.net",
       "defaultModel": "claude-sonnet-5"
+    },
+    "codexLargeContext": {
+      "$comment": "Optional larger Codex context window offered next to OpenAI's defaults (272K window, compaction at ~245K) in the config.toml card (ADR-0009), only for models whose Codex window can grow (GPT-6 / GPT-5.6 family). TODO(IT): enable only after confirming (1) that EVERY gateway route serving the Codex models accepts at least contextWindow input tokens plus output, (2) how requests above 272K input tokens are billed, and (3) how an over-long request fails: a streamed response.failed (Codex compacts and recovers) or a synchronous HTTP 400 (Codex 0.160 cannot recover the thread) — untested. The option is offered only when 272000 < contextWindow <= 872000 (Codex's cap, so CC Switch's 1000000 is rejected) and 0 < autoCompactTokenLimit <= 90% of contextWindow (written with scope total); 300000 leaves ~72K headroom below the window.",
+      "enabled": false,
+      "contextWindow": 372000,
+      "autoCompactTokenLimit": 300000
     }
   },
   "tools": [

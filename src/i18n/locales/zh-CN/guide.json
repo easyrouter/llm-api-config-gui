@@ -13,7 +13,7 @@
     "doneEditing": "完成",
     "resetToPreset": "恢复默认值",
     "providerName": "供应商名称",
-    "providerNameHint": "名称可以随意起，建议用这个，方便以后辨认。",
+    "providerNameHint": "名称可以随意起（Codex 下不要恰好用 OpenAI 或 azure，这两个名称会被自动换掉），建议用这个，方便以后辨认。",
     "baseUrl": "API 地址（Base URL）",
     "baseUrlHint": "请原样使用，不要自己增删结尾的斜杠或 /v1。",
     "protocol": "协议 / 请求格式",
@@ -53,24 +53,30 @@
   },
   "config": {
     "title": "Codex config.toml 模板（推荐）",
-    "description": "这份配置让 Codex 走服务网关的同时保留大部分官方功能，并为 {{model}} 启用 priority 档、大上下文与自动压缩。可以点「一键应用到本机 Codex」在确认后直接写入 ~/.codex/config.toml（原文件自动备份），也可以复制后自己粘贴到 CC Switch 里 Codex 供应商的「config.toml / 配置内容」一栏。内容可以直接修改——例如把 model_auto_compact_token_limit 调得更激进，或增删其他默认项。",
+    "description": "这份配置让 Codex 走服务网关的同时保留大部分官方功能：为 {{model}} 启用 priority 档，并按下面的上下文策略自动压缩。可以点「一键应用到本机 Codex」在确认后直接写入 ~/.codex/config.toml（原文件自动备份），也可以复制后自己粘贴到 CC Switch 里 Codex 供应商的「config.toml / 配置内容」一栏。内容可以直接修改。",
     "modelFallback": "所选模型",
-    "scopeLabel": "自动压缩统计口径（model_auto_compact_token_limit_scope）",
-    "scopeHint": "选择 {{limit}} 的自动压缩阈值按什么口径统计；不确定就用推荐值。",
-    "scope": {
-      "body_after_prefix": {
-        "label": "body_after_prefix（推荐）",
-        "explanation": "只统计缓存前缀之后的会话正文。配合提示词缓存更准确，能更充分地利用 {{contextWindow}} 上下文——大多数情况选它。"
+    "context": {
+      "title": "上下文与自动压缩",
+      "learnMore": "详细说明",
+      "intro": "Codex 每次请求都会把说明文件、之前的对话和工具输出一起发给模型，能装下的总量叫「上下文窗口」。快装满时 Codex 会自动「压缩」：把较早的内容换成一份交接摘要再继续干活，较早的细节会丢掉一些。",
+      "choiceLabel": "上下文策略",
+      "strategy": {
+        "openai_default": {
+          "label": "OpenAI 默认（推荐）",
+          "explanation": "模板不写任何上下文设置，由 Codex 使用 OpenAI 为模型设定的默认值：上下文窗口 {{window}}，用到约 {{limit}} 时自动压缩，最晚在 {{usable}} 时压缩。请求一般不会超过 {{longContext}}（OpenAI 官方价格对输入超过 {{longContext}} 的请求整单加价）；而且窗口越大，每轮要重复发送的内容越多，也就越贵。"
+        },
+        "large_window": {
+          "label": "大窗口（适合长任务）",
+          "explanation": "写入上下文窗口 {{window}}、用到 {{limit}} 时自动压缩（统计口径 total），最晚在 {{usable}} 时压缩。压缩次数更少，适合一个任务要连续做很久的情况；代价是每轮发送的内容更多、更贵，按 OpenAI 官方价格，输入超过 {{longContext}} 的请求还会整单加价。这个选项由 IT 在确认服务网关支持后开启；如果长对话反复报上下文长度错误，请改回「OpenAI 默认」。"
+        }
       },
-      "total": {
-        "label": "total",
-        "explanation": "统计整个请求（前缀 + 正文），自动压缩会更早触发。经常遇到超出上下文的报错、或网关按总 token 数限流时，选它更稳。"
-      }
+      "tips": "用得更顺：一个阶段做完时输入 /compact 主动压缩；换新任务时新开一个对话（客户端或 IDE 扩展里新建对话，CLI 里输入 /new）；用 /status 查看剩余上下文。压缩可能比上面的数字明显提前（有时提前几万 token），这是正常现象。要在已经很长的对话里粘贴大段日志时，先 /compact 再粘贴。修改配置后，新开一个对话即可生效。",
+      "ccSwitch": "在 CC Switch 里编辑 Codex 供应商时，请不要勾选「1M 上下文窗口」和「启用远程压缩」。前者会把上下文窗口改成 1M，远超推荐值：更贵，也可能超出服务网关能接受的长度。后者会把供应商名称改成 OpenAI，让 Codex 改用远程压缩，经服务网关转发时可能失败，或让长对话无法继续。"
     },
     "templateLabel": "config.toml 内容（可编辑）",
     "keySubstitution": "复制或应用时会把 <API-KEY> 自动替换为上面填写的真实 Key；界面上不会显示真实 Key。",
     "keyMissing": "上面还没有填写 API Key：复制出的内容会保留 <API-KEY> 占位符（粘贴后请自行替换）；一键应用需要先填写 Key。",
-    "edited": "已手动编辑：更改上方取值或统计口径不会覆盖你的修改；需要时可点「恢复为生成的模板」。",
+    "edited": "已手动编辑：更改上方取值或上下文策略不会覆盖你的修改；需要时可点「恢复为生成的模板」。",
     "regenerate": "恢复为生成的模板",
     "loading": "正在生成模板…",
     "apply": {
@@ -84,6 +90,10 @@
         "upToDate": "已是最新模板",
         "differs": "与模板不同（{{n}} 个备份）",
         "exists": "已存在（{{n}} 个备份；填写 API Key 后可与模板比对）"
+      },
+      "liveContext": {
+        "removes": "本机 config.toml 里目前写着：{{settings}}。应用后这些行会被删掉，改由 Codex 使用 OpenAI 默认值。",
+        "replaces": "本机 config.toml 里目前写着：{{settings}}。应用后会改成上面选择的大窗口设置。"
       },
       "confirmTitle": "写入本机 Codex 配置？",
       "confirmBody": "下面是将要写入的完整内容（预览中已隐藏 Key，实际写入的是完整 Key）。写入前会先把现有文件备份为 config.toml.seedrouter-<时间>.bak，随时可以恢复。",
@@ -194,7 +204,7 @@
   },
   "apply_codex_config": {
     "title": "一键应用 config.toml 模板",
-    "body": "回到上方「Codex config.toml 模板」卡片点「一键应用到本机 Codex」。它会把服务网关地址、priority 档、大上下文等写进 ~/.codex/config.toml；原文件会自动备份，可随时恢复。"
+    "body": "回到上方「Codex config.toml 模板」卡片点「一键应用到本机 Codex」。它会把服务网关地址、priority 档和所选的上下文策略写进 ~/.codex/config.toml；原文件会自动备份，可随时恢复。"
   },
   "close_terminals": {
     "title": "关闭所有终端窗口",

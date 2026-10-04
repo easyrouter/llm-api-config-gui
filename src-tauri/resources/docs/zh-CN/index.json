@@ -50,6 +50,13 @@
       "wizardStep": "configure"
     },
     {
+      "id": "context-compaction",
+      "title": "上下文与自动压缩",
+      "path": "context-compaction.md",
+      "lang": "zh-CN",
+      "wizardStep": "configure"
+    },
+    {
       "id": "verify",
       "title": "生效与验证",
       "path": "verify.md",

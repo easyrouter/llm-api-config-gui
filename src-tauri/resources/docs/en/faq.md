@@ -31,6 +31,9 @@ The tool measures latency and switches to a mirror (npmmirror) automatically. Th
 **What do I put in the model field?**
 Only the gateway address is company-wide; model name and reasoning effort vary per person. Enter the model assigned to you, or start with the value the tool suggests — you can change it in CC Switch at any time.
 
+**Codex suddenly "compacted" the chat and seems to have forgotten what was said earlier?**
+That is normal automatic compaction: when the chat nearly fills the context window, Codex replaces the older content with a summary, keeps your most recent messages and carries on, so some older detail is lost. It cannot be switched off, and it can happen noticeably earlier than you might expect. Starting a new chat for each new task, writing the plan and key decisions into a file (such as `PLAN.md`) and typing `/compact` yourself when you finish a stage keep the impact small. Details in [Context & auto-compaction](context-compaction).
+
 **How do I upgrade Codex / Claude Code later?**
 Run `npm install -g @openai/codex` (or `@anthropic-ai/claude-code`) again in a new terminal. CC Switch shows its own update prompt inside the app.
 

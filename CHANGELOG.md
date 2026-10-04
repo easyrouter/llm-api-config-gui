@@ -5,6 +5,52 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Changed (Codex context strategy, ADR-0009)
+
+- **The Codex `config.toml` template no longer writes context keys by default.** The PM template
+  wrote `model_context_window = 372000`, `model_auto_compact_token_limit = 300000` and
+  `model_auto_compact_token_limit_scope = "body_after_prefix"` (labelled "recommended"). The new
+  default strategy, `openai_default`, writes none of them, so Codex uses OpenAI's catalog values
+  for `gpt-6-astra` / `gpt-6.1-sol` / `gpt-5.6-sol` (Codex `rust-v0.160.0`): a 272K window,
+  automatic compaction at 90 % (244,800), forced at 95 % (258,400), scope `total`. 372,000 was
+  GPT-5.6 Sol's launch-week window, which OpenAI reverted to 272,000 in Codex 0.144.6. Requests
+  now normally stay below the 272K line above which OpenAI's list price charges the whole request
+  more (Codex's pre-turn check does not count the incoming message, so a very large paste can
+  still push one request over), and the 272K window is the smallest on offer, so it is the most
+  likely to fit every gateway route — the gateway's per-route limits are not published or tested,
+  and an over-long request through the gateway can fail in a way Codex cannot recover from.
+- **Optional large window behind a preset flag.** `gateway.codexLargeContext` (`enabled`,
+  `contextWindow`, `autoCompactTokenLimit`; shipped `false` / 372000 / 300000, `TODO(IT)`) adds a
+  `large_window` strategy to the card that writes the window, the limit and scope `total`. The
+  core offers it only when enabled and sane (window above 272K and at most 872K, limit at most 90 %
+  of the window) and only for models whose Codex window can grow — the GPT-6 / GPT-5.6 catalog
+  family, matched like Codex does (longest prefix, one `namespace/` segment); `gpt-5.5` and unknown
+  slugs are capped at 272K. A request for it otherwise renders the default.
+- **The scope radio is gone, and its explanation is corrected.** `body_after_prefix` counts growth
+  since the start of the current compaction window — it has nothing to do with prompt caching and
+  is not "more accurate"; with 300K on a 372K window it pushed compaction to the ~353K hard cap.
+  The template never writes it.
+- **The provider's display name no longer switches Codex to remote compaction** — neither in the
+  template nor in the one-click CC Switch import, which CC Switch writes verbatim as the Codex
+  provider's `name`. A user or preset name of exactly `OpenAI` (or `azure` in any case) falls back
+  to the preset name, then to the table id, and the import preview shows the name that is sent.
+  (Codex also compacts remotely for an Azure base URL; no name can override that.) The
+  provider-name hint says so.
+- `get_codex_config_template` takes `contextStrategy` instead of `autoCompactScope` and returns
+  `contextStrategy` (the one rendered), `contextStrategies` (window / compaction / usable numbers
+  of every strategy on offer for the request's model) and `longContextThreshold`; the card quotes
+  them through `guide:config.context.*` (`{{window}}`, `{{limit}}`, `{{usable}}`, `{{longContext}}`,
+  formatted by the new `formatTokens`). `codex_config_status` adds `liveContext` (the three keys
+  found in the live file; a scope other than `total` / `body_after_prefix` is never echoed), and
+  the card says what applying would change when they differ from the rendered strategy — e.g. for
+  files written by v0.1.0 / v0.1.1 — while the text is still the generated template.
+- The card gains a "Context and automatic compaction" section: what the window and compaction are,
+  the strategy and its numbers, habits (`/compact`, a new chat per task, `/status`), and a warning
+  not to tick CC Switch's "1M Context Window" and "Enable remote compaction" checkboxes. New
+  bilingual help section `context-compaction` explains every related key, local vs remote
+  compaction, CC Switch interplay and the habits; `configure-cc-switch`, `one-click` and `faq`
+  point to it (and now name the card's "differs from the template" status correctly).
+
 ### Changed (open-sourcing)
 
 - Licensed under **Apache-2.0** (`LICENSE`, `NOTICE`, `license` fields in `package.json` and

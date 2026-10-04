@@ -81,7 +81,7 @@ When done, the environment-variable check runs again.
 ## Apply config.toml with one click
 
 **What it does**
-Writes the Codex configuration template generated on the "Configure" page to `~/.codex/config.toml`. The template routes Codex through the service gateway while keeping the official features (priority tier, large context window, auto-compaction). This is the **only** file this tool ever writes inside `~/.codex/`, and only after you click the button.
+Writes the Codex configuration template generated on the "Configure" page to `~/.codex/config.toml`. The template routes Codex through the service gateway and turns on the priority tier; context is handled according to the strategy chosen on the card — by default no context settings are written and Codex uses OpenAI's defaults (details in [Context & auto-compaction](context-compaction)). This is the **only** file this tool ever writes inside `~/.codex/`, and only after you click the button.
 
 **Step by step**
 
@@ -96,7 +96,7 @@ Writes the Codex configuration template generated on the "Configure" page to `~/
 
 **If it fails**
 
-- **CC Switch may rewrite this file when you switch providers** — that is CC Switch's normal behaviour. After switching, go back to the "Configure" page and click "Apply" again; the page shows "differs from template" when that is needed.
+- **CC Switch may rewrite this file when you switch providers** — that is CC Switch's normal behaviour. After switching, go back to the "Configure" page and click "Apply" again; the page shows "differs from the template" when that is needed.
 - No key entered yet → the button is disabled; paste the key in the card above first.
 - File in use / permission denied → close a running Codex and retry.
 

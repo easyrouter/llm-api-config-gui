@@ -20,6 +20,7 @@ const config: AppConfig = {
     defaultModel: "",
     defaultReasoningEffort: "",
     claudeCode: { baseUrl: "", defaultModel: "" },
+    codexLargeContext: { enabled: false, contextWindow: 372000, autoCompactTokenLimit: 300000 },
   },
   tools: [
     {
