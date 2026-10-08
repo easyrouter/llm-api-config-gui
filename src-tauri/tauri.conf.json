@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "SeedRouter Onboarding",
+        "title": "LLM API Config GUI",
         "label": "main",
         "width": 1080,
         "height": 720,

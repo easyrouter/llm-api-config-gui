@@ -56,6 +56,11 @@ const pkg = JSON.parse(readFileSync("package.json", "utf8"));
 if (pkg.repository.url !== `${canonical}.git`) errors.push("package.json: repository mismatch");
 if (!readFileSync("src-tauri/Cargo.toml", "utf8").includes(`repository = "${canonical}"`))
   errors.push("Cargo.toml: repository mismatch");
+const appConfig = JSON.parse(readFileSync("src-tauri/tauri.conf.json", "utf8"));
+if (appConfig.app.windows[0].title !== "LLM API Config GUI")
+  errors.push("tauri.conf.json: window title must use generic product name");
+if (!readFileSync("index.html", "utf8").includes("<title>LLM API Config GUI</title>"))
+  errors.push("index.html: title must use generic product name");
 if (errors.length) {
   console.error(errors.join("\n"));
   process.exitCode = 1;
