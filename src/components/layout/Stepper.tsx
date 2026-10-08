@@ -2,7 +2,7 @@ import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 import { cn } from "@/lib/cn";
-import { stepIndex, useWizardStore, WIZARD_STEPS } from "@/stores/wizard";
+import { stepIndex, stepsForMode, useWizardStore } from "@/stores/wizard";
 
 /**
  * Vertical step list. Completed and current steps are clickable; future steps are locked, and
@@ -15,16 +15,18 @@ export function Stepper() {
   const navigationLocked = useWizardStore((s) => s.navigationLocked);
   const goTo = useWizardStore((s) => s.goTo);
 
+  const setupMode = useWizardStore((s) => s.setupMode);
   const current = stepIndex(step);
   const reachable = stepIndex(furthest);
 
   return (
     <nav aria-label="wizard steps">
       <ol className="space-y-1">
-        {WIZARD_STEPS.map((s, i) => {
-          const isCurrent = i === current;
-          const isDone = i < current;
-          const isLocked = i > reachable || (navigationLocked && !isCurrent);
+        {stepsForMode(setupMode).map((s, i) => {
+          const position = stepIndex(s);
+          const isCurrent = position === current;
+          const isDone = position < current;
+          const isLocked = position > reachable || (navigationLocked && !isCurrent);
           return (
             <li key={s}>
               <button

@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- Quick API setup for installed Codex and Claude Code clients, with editable endpoint and model fields, optional detailed controls, and a path back to environment checks.
+- Chinese and English README entry points, task-focused API configuration guides, troubleshooting, security guidance, and documentation link checks.
+
+### Fixed
+
+- Clear stale connectivity results when the API endpoint, model, or key changes.
+- Explain actual credential handling, including provider requests, clipboard contents, and confirmed configuration writes.
+
+
 ## [0.2.0] - 2026-10-04
 
 Codex context management follows OpenAI's defaults (ADR-0009): the `config.toml` template no

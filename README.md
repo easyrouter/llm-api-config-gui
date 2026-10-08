@@ -1,48 +1,93 @@
-# SeedRouter Onboarding · SeedRouter 接入引导工具
+# SeedRouter API 配置助手：Codex / Claude Code 图形化配置工具
 
-Guided desktop assistant (Windows / macOS) that takes a non-developer from a clean machine to a
-working **Codex CLI** and **Claude Code** setup through the service gateway configured in
-**CC Switch** — environment check → install → guided configuration → verification →
-automatic diagnosis — in Chinese and English.
+[English](README.en.md) · [快速开始](docs/QUICKSTART.md) · [常见错误](docs/TROUBLESHOOTING.md) · [下载页面](https://github.com/easyrouter/llm-api-tutorial/releases) · [SeedRouter 官网](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-tutorial)
 
-Built with Tauri 2 (Rust) + React / TypeScript.
+SeedRouter API 配置助手帮你修改 Codex 和 Claude Code 的 API 地址、密钥与模型。如果你已经装好工具，可以直接开始配置。第一次使用时，你可以先检查环境，再安装缺少的组件。修改前会显示预览。写入 Codex 配置前，它会先备份原文件。
 
-|                                                       |                                                     |
-| ----------------------------------------------------- | --------------------------------------------------- |
-| Architecture & IPC contract                           | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)      |
-| Development setup & commands                          | [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md)        |
-| Contribution standard (branches, commits, DoD, style) | [`CONTRIBUTING.md`](CONTRIBUTING.md)                |
-| Decisions (ADRs)                                      | [`docs/adr/`](docs/adr/)                            |
-| Product requirements & open questions (internal)      | private repo `ViaAurorae/llm-api-tutorial-internal` |
-| Release & signing                                     | [`docs/RELEASE.md`](docs/RELEASE.md)                |
-| Agent guide                                           | [`CLAUDE.md`](CLAUDE.md)                            |
+> **版本说明**：本 README 描述当前源码。新的「直接配置 API」入口尚未发布安装包；现有 v0.2.0 使用完整引导流程。下载前请阅读 Release 说明，未签名构建不等于已签名、公证的正式版。
 
-## Quick start
+## 适合谁使用
+
+- 已装好 Codex CLI、Codex 客户端或 Claude Code，只想修改 Base URL、API Key 或模型。
+- 第一次配置 AI 编程工具，不确定 Node.js、PATH 和 API 地址是否正确。
+- 使用 SeedRouter 或其他兼容网关，需要先检查连接，再确认修改。
+
+## 能做什么
+
+| 场景                           | 操作                                           | 安全边界                                  |
+| ------------------------------ | ---------------------------------------------- | ----------------------------------------- |
+| 已安装，想换 API               | 「直接配置 API」→ 填写地址、模型、密钥         | 跳过安装，不假装环境已检查                |
+| 新电脑首次使用                 | 「开始检查」→ 检查环境 → 按需安装              | 运行前展示命令，安装需要确认              |
+| Codex / Claude Code 切换服务商 | 预览后交给 CC Switch 导入，再在 CC Switch 激活 | 不直接改写 CC Switch 数据库或 Claude 配置 |
+| 不使用 CC Switch 的 Codex 用户 | 展开手动配置 → 预览 → 确认应用                 | 先备份 `config.toml`，可恢复最近备份      |
+| API 无法连接                   | 连接测试、模型检查、错误诊断                   | 测试会联系所选服务商，可能产生用量费用    |
+
+支持 Windows、macOS，提供简体中文和英文界面。保留自定义服务商，不强制使用 SeedRouter。工具内的模型预设不是可用性保证，应以服务商实时模型列表为准。
+
+## 快速开始：四步配置 API
+
+1. **准备工具**：从 [Releases](https://github.com/easyrouter/llm-api-tutorial/releases) 查看构建说明，或按下方命令运行当前源码。
+2. **选择入口**：已安装工具选择「直接配置 API」；首次使用选择「开始检查」。
+3. **填写并测试**：填写 API Key，确认 Base URL 和模型，再主动运行连接测试。
+4. **确认修改**：选择 CC Switch 导入，或展开 Codex 手动配置；完成后重新打开终端并验证。
+
+完整步骤：[新手 API 配置指南](docs/QUICKSTART.md)。
+
+### SeedRouter 的 Base URL 怎么填？
+
+| 客户端                   | Base URL                    | 协议               |
+| ------------------------ | --------------------------- | ------------------ |
+| Codex CLI / Codex 客户端 | `https://seedrouter.net/v1` | Responses          |
+| Claude Code              | `https://seedrouter.net`    | Anthropic Messages |
+
+Claude Code 会追加 `/v1/messages`，不要把完整接口路径填进 Base URL。其他服务商可能有不同的路径前缀，优先遵循该服务商文档。
+
+## 配置教程与故障排查
+
+- [Codex API 配置：自定义 Base URL、API Key 与模型](docs/guides/codex-api-config.md)
+- [Claude Code API 配置：Anthropic 网关与 CC Switch](docs/guides/claude-code-api-config.md)
+- [Base URL、API Key 和模型名分别是什么？](docs/guides/base-url-api-key.md)
+- [401、403、404、429 和连接失败排查](docs/TROUBLESHOOTING.md)
+- [密钥、剪贴板、备份与安全边界](SECURITY.md)
+
+## SeedRouter 与本项目的关系
+
+[SeedRouter](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-tutorial) 赞助了本项目，并预设了它的 API 地址。你可以去网站创建 API Key、查看模型和价格，也可以换成其他兼容的服务商。软件以 Apache-2.0 许可证开源。API 调用是否收费、怎么收费，由你选择的服务商决定。
+
+[获取 SeedRouter API Key](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-tutorial) · [接入文档](https://seedrouter.net/doc/)
+
+## 本地运行与开发
+
+需要 Node.js ≥ 20、Rust stable 和对应系统的 Tauri 构建依赖。只想使用软件的用户不需要安装开发环境；请先查看下载页面的构建说明。
 
 ```bash
-npm install
+git clone https://github.com/easyrouter/llm-api-tutorial.git
+cd llm-api-tutorial
+npm ci
 npm run tauri dev
 ```
 
-Requires Node ≥ 20 and a Rust stable toolchain (see `docs/DEVELOPMENT.md`).
+```bash
+npm run check       # 格式、类型、翻译、前端与 Rust 检查
+npm run docs:check  # 本地 Markdown 链接与文档结构
+npm run build      # 前端生产构建；不等于桌面安装包
+```
 
-## What the tool never does
+| 开发资料        | 入口                                 |
+| --------------- | ------------------------------------ |
+| 架构和 IPC 协议 | [ARCHITECTURE](docs/ARCHITECTURE.md) |
+| 开发环境        | [DEVELOPMENT](docs/DEVELOPMENT.md)   |
+| 贡献方式        | [CONTRIBUTING](CONTRIBUTING.md)      |
+| 架构决策        | [ADRs](docs/adr/)                    |
+| 发布与签名      | [RELEASE](docs/RELEASE.md)           |
+| 更新记录        | [CHANGELOG](CHANGELOG.md)            |
 
-- write to `~/.claude` or `~/.cc-switch` (the user configures inside CC Switch); under `~/.codex`
-  it writes only `config.toml`, after an explicit click and with a backup (ADR-0008)
-- change environment variables or PATH silently — one-click PATH repair / env-var clean-up show
-  the full change first, run only after confirmation, back up every edited file, and never touch
-  the machine PATH
-- store or upload API keys
-- run a command without showing it first, or elevate silently (admin steps are labelled and
-  prompted by the OS / installer)
+## 反馈与参与
 
-## Sponsorship
+通过 [GitHub Issues](https://github.com/easyrouter/llm-api-tutorial/issues) 提交复现步骤，请勿上传 API Key、完整配置文件或含个人信息的日志。欢迎修正文档、补充测试和分享实际配置经验。
 
-This project is sponsored by [SeedRouter](https://seedrouter.net). The bundled preset
-(`src-tauri/resources/app-config.json`) points at the SeedRouter gateway; a user-level override
-file can retarget it (see `docs/ARCHITECTURE.md`).
+本项目不是 OpenAI 或 Anthropic 的官方客户端，不代表它们提供支持或背书。
 
-## License
+## 许可证
 
-[Apache License 2.0](LICENSE). See [`NOTICE`](NOTICE) for attribution.
+[Apache License 2.0](LICENSE)。原项目归属与第三方声明见 [NOTICE](NOTICE)。

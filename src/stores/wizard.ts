@@ -34,7 +34,15 @@ export function stepIndex(step: WizardStep): number {
   return WIZARD_STEPS.indexOf(normalizeStep(step));
 }
 
+export type SetupMode = "full" | "quick";
+
+export function stepsForMode(mode: SetupMode): readonly WizardStep[] {
+  return mode === "quick" ? ["welcome", "configure", "verify", "done"] : WIZARD_STEPS;
+}
+
 export interface WizardState {
+  setupMode: SetupMode;
+  startSetup: (mode: SetupMode) => void;
   step: WizardStep;
   furthestStep: WizardStep;
   selectedTools: ToolId[];
@@ -65,6 +73,7 @@ export interface WizardState {
 }
 
 const initial = {
+  setupMode: "full" as SetupMode,
   step: "welcome" as WizardStep,
   furthestStep: "welcome" as WizardStep,
   selectedTools: ["codex", "claude-code"] as ToolId[],
@@ -77,27 +86,35 @@ const initial = {
   navigationLocked: false,
 };
 
-/** Step at `index`, clamped to the flow. */
-function stepAt(index: number): WizardStep {
-  const clamped = Math.min(Math.max(index, 0), WIZARD_STEPS.length - 1);
-  return WIZARD_STEPS[clamped] ?? "welcome";
+/** Previous/next step in the active flow, clamped at its boundaries. */
+function adjacentStep(state: WizardState, offset: number): WizardStep {
+  const steps = stepsForMode(state.setupMode);
+  const index = steps.indexOf(normalizeStep(state.step));
+  return steps[Math.min(Math.max(index + offset, 0), steps.length - 1)] ?? "welcome";
 }
 
 export const useWizardStore = create<WizardState>()((set, get) => ({
   ...initial,
+
+  startSetup: (setupMode) => {
+    if (get().navigationLocked || get().selectedTools.length === 0) return;
+    const step = setupMode === "quick" ? "configure" : "env_check";
+    set({ setupMode, step, furthestStep: step, snapshot: null, verifyResults: {} });
+  },
 
   goTo: (target) =>
     set((s) => {
       const step = normalizeStep(target);
       return {
         step,
+        setupMode: step === "env_check" || step === "install" ? "full" : s.setupMode,
         furthestStep: stepIndex(step) > stepIndex(s.furthestStep) ? step : s.furthestStep,
       };
     }),
 
-  next: () => get().goTo(stepAt(stepIndex(get().step) + 1)),
+  next: () => get().goTo(adjacentStep(get(), 1)),
 
-  back: () => set({ step: stepAt(stepIndex(get().step) - 1) }),
+  back: () => set({ step: adjacentStep(get(), -1) }),
 
   setSelectedTools: (tools) => set({ selectedTools: tools }),
   setTelemetryOptIn: (on) => set({ telemetryOptIn: on }),

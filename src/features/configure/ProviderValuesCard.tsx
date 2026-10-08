@@ -12,9 +12,10 @@ import {
 import { useId, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
-import { Alert, Button, Card, CopyField, ErrorBanner } from "@/components/ui";
+import { Alert, Button, Card, CopyField, ErrorBanner, ExternalLink } from "@/components/ui";
 import { GatewayCheckView, ModelListCheckView } from "@/features/verify/VerifyResultView";
 import { useAsync } from "@/hooks";
+import { SEEDROUTER_LINKS } from "@/lib/seedrouter";
 import { cn } from "@/lib/cn";
 import { testConnectivity } from "@/lib/tauri";
 import type {
@@ -35,6 +36,7 @@ const inputClass =
   "focus-visible:ring-brand-500 min-w-0 flex-1 rounded-md border border-neutral-300 bg-white px-3 py-2 text-sm focus-visible:ring-2 focus-visible:outline-none dark:border-neutral-700 dark:bg-neutral-950";
 
 export interface ProviderValuesCardProps {
+  simple?: boolean;
   tool: ToolId;
   preset: ProviderPreset;
   /** Codex account path; on `chatgpt_login` the key only feeds the config.toml template. */
@@ -60,6 +62,7 @@ export interface ProviderValuesCardProps {
  * check" and "URL rules preview" cards.
  */
 export function ProviderValuesCard({
+  simple = false,
   tool,
   preset,
   branch = null,
@@ -100,58 +103,77 @@ export function ProviderValuesCard({
     <Card
       title={t("guide:values.title")}
       description={
-        branch === "chatgpt_login"
-          ? t("guide:values.descriptionLogin")
-          : t("guide:values.description")
+        simple
+          ? t("guide:quick.valuesDescription")
+          : branch === "chatgpt_login"
+            ? t("guide:values.descriptionLogin")
+            : t("guide:values.description")
       }
     >
       <div className="space-y-4">
-        <EditableRow
-          label={t("guide:values.providerName")}
-          value={providerName}
-          presetValue={preset.providerName}
-          onChange={onProviderNameChange}
-          mono={false}
-          hint={t("guide:values.providerNameHint")}
-          testId="provider-name"
-        />
+        {!simple && (
+          <EditableRow
+            label={t("guide:values.providerName")}
+            value={providerName}
+            presetValue={preset.providerName}
+            onChange={onProviderNameChange}
+            mono={false}
+            hint={t("guide:values.providerNameHint")}
+            testId="provider-name"
+          />
+        )}
         <EditableRow
           label={t("guide:values.baseUrl")}
           value={baseUrl}
           presetValue={preset.baseUrl}
-          onChange={onBaseUrlChange}
+          onChange={(value) => {
+            reset();
+            onBaseUrlChange(value);
+          }}
           hint={t("guide:values.baseUrlHint")}
+          alwaysEditing={simple}
           testId="base-url"
         />
-        {tool === "codex" ? (
-          <CopyField
-            label={t("guide:values.protocol")}
-            value={protocolLabel(t, preset.protocol)}
-            mono={false}
-            hint={t("guide:values.protocolHint")}
-          />
-        ) : (
-          <div className="space-y-1.5">
-            <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
-              {t("guide:values.protocol")}
+        {!simple &&
+          (tool === "codex" ? (
+            <CopyField
+              label={t("guide:values.protocol")}
+              value={protocolLabel(t, preset.protocol)}
+              mono={false}
+              hint={t("guide:values.protocolHint")}
+            />
+          ) : (
+            <div className="space-y-1.5">
+              <div className="text-sm font-medium text-neutral-700 dark:text-neutral-200">
+                {t("guide:values.protocol")}
+              </div>
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                {t("guide:values.protocolNoteClaude")}
+              </p>
             </div>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {t("guide:values.protocolNoteClaude")}
-            </p>
-          </div>
-        )}
+          ))}
         <EditableRow
           label={t("guide:values.modelHint")}
           value={model}
           presetValue={preset.modelHint}
-          onChange={onModelChange}
+          onChange={(value) => {
+            reset();
+            onModelChange(value);
+          }}
           hint={model.trim() === "" ? modelHintText(t, "") : undefined}
+          alwaysEditing={simple}
           testId="model"
         />
-        {effortHint && (
+        {!simple && effortHint && (
           <CopyField label={t("guide:values.reasoningEffortHint")} value={effortHint} />
         )}
 
+        {simple && (
+          <div className="text-xs text-neutral-500">
+            {t("guide:quick.endpointHint", { tool: t(`tools.${tool}`) })}{" "}
+            <ExternalLink href={SEEDROUTER_LINKS.start}>{t("welcome.quick.getKey")}</ExternalLink>
+          </div>
+        )}
         <div className="space-y-1.5">
           <label htmlFor={keyId} className="block text-sm font-medium">
             {t("guide:values.apiKeyRow")}
@@ -161,7 +183,10 @@ export function ProviderValuesCard({
               id={keyId}
               type={keyVisible ? "text" : "password"}
               value={apiKey}
-              onChange={(e) => onApiKeyChange(e.target.value)}
+              onChange={(e) => {
+                reset();
+                onApiKeyChange(e.target.value);
+              }}
               placeholder={t("guide:key.placeholder")}
               autoComplete="off"
               autoCapitalize="off"
@@ -229,6 +254,7 @@ function EditableRow({
   mono = true,
   hint,
   testId,
+  alwaysEditing = false,
 }: {
   label: string;
   value: string;
@@ -237,12 +263,13 @@ function EditableRow({
   mono?: boolean;
   hint?: ReactNode;
   testId: string;
+  alwaysEditing?: boolean;
 }) {
   const { t } = useTranslation();
   const inputId = useId();
   const [editing, setEditing] = useState(false);
 
-  if (!editing) {
+  if (!editing && !alwaysEditing) {
     return (
       <div data-testid={`row-${testId}`}>
         <CopyField
@@ -292,14 +319,16 @@ function EditableRow({
         >
           {t("guide:values.resetToPreset")}
         </Button>
-        <Button
-          variant="primary"
-          onClick={() => setEditing(false)}
-          leftIcon={<Check className="size-4" aria-hidden />}
-          data-testid={`done-${testId}`}
-        >
-          {t("guide:values.doneEditing")}
-        </Button>
+        {!alwaysEditing && (
+          <Button
+            variant="primary"
+            onClick={() => setEditing(false)}
+            leftIcon={<Check className="size-4" aria-hidden />}
+            data-testid={`done-${testId}`}
+          >
+            {t("guide:values.doneEditing")}
+          </Button>
+        )}
       </div>
       {hint && <p className="text-xs text-neutral-500">{hint}</p>}
     </div>

@@ -254,6 +254,83 @@ describe("ConfigureScreen", () => {
 
   const keyInput = async () => await screen.findByTestId("key-input");
 
+  it("offers direct endpoint and model inputs in quick mode without sending credentials", async () => {
+    useWizardStore.getState().startSetup("quick");
+    render(<ConfigureScreen />);
+    expect(await screen.findByTestId("input-base-url")).toHaveValue(BASE_URL);
+    expect(screen.getByTestId("input-model")).toHaveValue("gpt-5-codex");
+    expect(screen.queryByTestId("codex-client-note")).not.toBeInTheDocument();
+    expect(screen.getByTestId("codex-config-card").closest("details")).not.toHaveAttribute("open");
+    expect(
+      mockInvoke.mock.calls.some(([command]) =>
+        ["test_connectivity", "open_cc_switch_import", "apply_codex_config"].includes(command),
+      ),
+    ).toBe(false);
+  });
+
+  it("clears a successful connection result when the endpoint changes", async () => {
+    useWizardStore.getState().startSetup("quick");
+    render(<ConfigureScreen />);
+    fireEvent.change(await keyInput(), { target: { value: GOOD_KEY } });
+    fireEvent.click(screen.getByTestId("test-connectivity"));
+    expect(await screen.findByTestId("connectivity-result")).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId("input-base-url"), {
+      target: { value: "https://other.example/v1" },
+    });
+    expect(screen.queryByTestId("connectivity-result")).not.toBeInTheDocument();
+  });
+
+  it("ignores a connection response that arrives after an endpoint edit", async () => {
+    let finish!: (report: ConnectivityReport) => void;
+    setInvokeHandlers({
+      test_connectivity: () =>
+        new Promise<ConnectivityReport>((resolve) => {
+          finish = resolve;
+        }),
+    });
+    useWizardStore.getState().startSetup("quick");
+    render(<ConfigureScreen />);
+    fireEvent.change(await keyInput(), { target: { value: GOOD_KEY } });
+    fireEvent.click(screen.getByTestId("test-connectivity"));
+    fireEvent.change(screen.getByTestId("input-base-url"), {
+      target: { value: "https://other.example/v1" },
+    });
+    await act(async () => {
+      finish(
+        connectivity({
+          request: { baseUrl: BASE_URL, apiKey: GOOD_KEY, model: "model", protocol: "responses" },
+        }),
+      );
+      await Promise.resolve();
+    });
+    expect(screen.queryByTestId("connectivity-result")).not.toBeInTheDocument();
+  });
+
+  it("clears a successful connection result when the model or key changes", async () => {
+    useWizardStore.getState().startSetup("quick");
+    render(<ConfigureScreen />);
+    fireEvent.change(await keyInput(), { target: { value: GOOD_KEY } });
+    fireEvent.click(screen.getByTestId("test-connectivity"));
+    await screen.findByTestId("connectivity-result");
+    fireEvent.change(screen.getByTestId("input-model"), { target: { value: "another-model" } });
+    expect(screen.queryByTestId("connectivity-result")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("test-connectivity"));
+    await screen.findByTestId("connectivity-result");
+    fireEvent.change(await keyInput(), { target: { value: "sk-another-test-key" } });
+    expect(screen.queryByTestId("connectivity-result")).not.toBeInTheDocument();
+  });
+
+  it("drops the typed key when switching tools in quick mode", async () => {
+    useWizardStore.getState().startSetup("quick");
+    render(<ConfigureScreen />);
+    fireEvent.change(await keyInput(), { target: { value: GOOD_KEY } });
+    fireEvent.click(screen.getByRole("tab", { name: "Claude Code" }));
+    expect(await screen.findByTestId("input-base-url")).toHaveValue(CLAUDE_BASE_URL);
+    expect(await keyInput()).toHaveValue("");
+    fireEvent.click(screen.getByRole("tab", { name: "Codex CLI" }));
+    expect(await keyInput()).toHaveValue("");
+  });
+
   it("renders the editable values, the codex client note and the numbered steps", async () => {
     render(<ConfigureScreen />);
     expect(await screen.findByText("Open CC Switch")).toBeInTheDocument();

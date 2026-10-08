@@ -21,7 +21,7 @@
     "apiKeyPlaceholder": "在此粘贴 Key（仅本次使用）",
     "show": "显示",
     "hide": "隐藏",
-    "keyNote": "Key 只在内存中保留这一次请求的时间：请求发出后立即清空，不会保存、记录、上传或写入报告。",
+    "keyNote": "测试会把 Key 发送到你填写的网关；发出后清空本页输入，不写入本工具的持久存储、日志、统计或报告。",
     "protocol": "协议：{{protocol}}",
     "notHttps": "这个地址不是 https，Key 会以明文传输。工具只会通过 https 发送 Key，请使用服务网关地址。",
     "missingFields": "请填写网关地址、模型和 API Key 后再开始验证。"

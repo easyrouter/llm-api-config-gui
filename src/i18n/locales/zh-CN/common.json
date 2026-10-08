@@ -1,7 +1,7 @@
 {
   "app": {
-    "name": "SeedRouter 接入引导工具",
-    "tagline": "从环境检查到成功验证，一条路径完成 Codex 与 Claude Code 的接入",
+    "name": "SeedRouter API 配置助手",
+    "tagline": "修改 API、验证连接，或从零开始安装",
     "version": "版本 {{version}}",
     "language": "语言"
   },
@@ -59,8 +59,8 @@
     "codex-app": "Codex 客户端"
   },
   "welcome": {
-    "title": "欢迎使用 SeedRouter 接入引导工具",
-    "intro": "本工具会依次帮你完成：检查电脑环境 → 安装缺失组件 → 在 CC Switch 中配置服务网关 → 验证是否可用。全程无需查阅文档，出错时会自动给出原因和修复方法。",
+    "title": "把 API 配置好，再开始工作",
+    "intro": "为 Codex 和 Claude Code 修改 API 地址、密钥与模型；已安装工具可直接配置，新电脑可从环境检查开始。",
     "whatWeDo": "工具会做什么",
     "whatWeDoItems": {
       "check": "自动检测操作系统、Node.js、Codex CLI、Claude Code、CC Switch 以及环境变量和网络连通性",
@@ -72,13 +72,20 @@
     "whatWeDontItems": {
       "noConfigWrite": "不会悄悄修改 ~/.codex、~/.claude 或 CC Switch 的配置文件：只有你在「配置」步骤确认「应用 Codex 配置模板」后才会写入 ~/.codex/config.toml，并先备份原文件；CC Switch 的配置由 CC Switch 自己写入",
       "noEnvEdit": "不会在未经你确认的情况下修改环境变量：「一键清理环境变量」和「一键修复 PATH」都会先展示将要改动的内容，确认后才执行，并且会备份",
-      "noKeyStorage": "不会保存或上传你的 API Key（仅在内存中用于连通性测试，或在你确认后交给 CC Switch 导入）"
+      "noKeyStorage": "不会把密钥写入本工具的本地存储或统计；测试会发送给你填写的服务商，复制会进入剪贴板，确认应用或导入后会由目标配置保存。"
     },
     "selectTools": "本次要接入的工具",
     "codexClientHint": "同时覆盖 Codex 客户端 / IDE 扩展——它们与 Codex CLI 共用同一份配置",
     "telemetryNotice": "为帮助 IT 部门改进流程，工具可上报匿名的步骤成功率与耗时统计（不含任何密钥、地址或个人信息）。",
     "telemetryOptIn": "允许上报匿名统计",
-    "start": "开始检查"
+    "start": "开始检查",
+    "quick": {
+      "title": "已经装好？直接改 API",
+      "description": "填写 API Key → 测试连接 → 确认导入。",
+      "action": "直接配置 API",
+      "getKey": "到 SeedRouter 获取 API Key",
+      "disclosure": "SeedRouter 是本项目赞助方和默认服务商；也可使用其他兼容 API。模型与价格以服务商控制台为准。"
+    }
   },
   "done": {
     "title": "接入完成",

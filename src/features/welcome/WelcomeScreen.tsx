@@ -1,5 +1,8 @@
-import { ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import { ArrowRight, Settings2, ShieldCheck, Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+
+import { ExternalLink } from "@/components/ui";
+import { SEEDROUTER_LINKS } from "@/lib/seedrouter";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,7 +20,7 @@ export function WelcomeScreen() {
   const setSelected = useWizardStore((s) => s.setSelectedTools);
   const telemetryOptIn = useWizardStore((s) => s.telemetryOptIn);
   const setTelemetryOptIn = useWizardStore((s) => s.setTelemetryOptIn);
-  const goTo = useWizardStore((s) => s.goTo);
+  const startSetup = useWizardStore((s) => s.startSetup);
 
   const telemetryConfigured = Boolean(config?.telemetry.endpoint);
 
@@ -38,7 +41,7 @@ export function WelcomeScreen() {
         ruleId: null,
       }).catch(() => undefined);
     }
-    goTo("env_check");
+    startSetup("full");
   };
 
   return (
@@ -49,6 +52,47 @@ export function WelcomeScreen() {
           {t("welcome.intro")}
         </p>
       </div>
+
+      <Card title={t("welcome.selectTools")}>
+        <div className="flex flex-wrap gap-x-8 gap-y-4">
+          {ALL_TOOLS.map((id) => (
+            <div key={id} className="space-y-1">
+              <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  className="accent-brand-600 size-4"
+                  checked={selected.includes(id)}
+                  onChange={() => toggleTool(id)}
+                />
+                {t(`tools.${id}`)}
+              </label>
+              {id === "codex" && (
+                <p className="pl-6 text-xs text-neutral-500">{t("welcome.codexClientHint")}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card
+        title={t("welcome.quick.title")}
+        className="border-brand-500/40 bg-brand-50/40 dark:bg-brand-700/10"
+      >
+        <p className="mb-4 text-sm text-neutral-600 dark:text-neutral-300">
+          {t("welcome.quick.description")}
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <Button
+            onClick={() => startSetup("quick")}
+            disabled={selected.length === 0}
+            leftIcon={<Settings2 className="size-4" aria-hidden />}
+          >
+            {t("welcome.quick.action")}
+          </Button>
+          <ExternalLink href={SEEDROUTER_LINKS.start}>{t("welcome.quick.getKey")}</ExternalLink>
+        </div>
+        <p className="mt-3 text-xs text-neutral-500">{t("welcome.quick.disclosure")}</p>
+      </Card>
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card
@@ -80,27 +124,6 @@ export function WelcomeScreen() {
           </ul>
         </Card>
       </div>
-
-      <Card title={t("welcome.selectTools")}>
-        <div className="flex flex-wrap gap-x-8 gap-y-4">
-          {ALL_TOOLS.map((id) => (
-            <div key={id} className="space-y-1">
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  className="accent-brand-600 size-4"
-                  checked={selected.includes(id)}
-                  onChange={() => toggleTool(id)}
-                />
-                {t(`tools.${id}`)}
-              </label>
-              {id === "codex" && (
-                <p className="pl-6 text-xs text-neutral-500">{t("welcome.codexClientHint")}</p>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
 
       {telemetryConfigured && (
         <Card>
