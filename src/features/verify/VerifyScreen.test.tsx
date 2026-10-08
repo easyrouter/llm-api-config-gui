@@ -203,7 +203,7 @@ describe("VerifyScreen", () => {
     expect(screen.getByTestId("gateway-model")).toHaveValue("gpt-5-codex");
     const keyInput = screen.getByTestId("gateway-key");
     expect(keyInput).toHaveAttribute("type", "password");
-    expect(screen.getByText(/held in memory only for this one request/)).toBeInTheDocument();
+    expect(screen.getByText(/The test sends your key to the entered gateway/)).toBeInTheDocument();
 
     // missing key → no request, inline hint
     await clickVerify();

@@ -40,7 +40,7 @@
   },
   "import": {
     "title": "一键导入 CC Switch",
-    "description": "把上面的值直接发给本机的 CC Switch（需要较新版本）。CC Switch 会弹出自己的确认窗口并写入自己的配置——本工具依旧不碰任何配置文件。",
+    "description": "把上面的值交给本机 CC Switch（需要支持导入的版本），由它显示确认窗口并写入自己的配置。此导入操作不会由本工具直接写入配置文件。",
     "button": "一键导入 CC Switch",
     "needsValues": "需要先填写供应商名称、API 地址和 API Key（模型可选）。",
     "editNote": "重复导入会新建一个供应商，不会覆盖旧的；要修改已有供应商，请直接在 CC Switch 里编辑。下面的手动步骤仍然可用。",
@@ -219,7 +219,7 @@
     "show": "显示",
     "hide": "隐藏",
     "clear": "清空",
-    "privacy": "Key 只保存在本页内存中，用于连通性测试、获取模型列表，以及你确认后的一键导入；不会写入磁盘、日志或上报，离开本页即清空。",
+    "privacy": "Key 输入仅在本页内存中保留；主动测试会发送到填写的网关，复制会进入剪贴板，确认应用 Codex 配置或 CC Switch 导入后可能保存到目标配置及备份。离开本页会清空输入，但不会撤销密钥或清除目标配置。",
     "valid": "格式看起来没问题（共 {{length}} 个字符）。",
     "invalid": "Key 格式有需要修正的问题：",
     "hintLabel": "提示",
@@ -277,5 +277,15 @@
       "label": "我没有 ChatGPT 账号",
       "description": "在 CC Switch 添加自定义供应商，填服务网关地址和 API Key。"
     }
+  },
+  "quick": {
+    "notice": "快捷模式跳过安装和环境检查，不代表它们已通过；连接测试可能产生服务商用量费用。",
+    "checkEnvironment": "先检查环境",
+    "detailed": "显示完整配置选项",
+    "manual": "不用 CC Switch？展开手动配置与 Codex 安全应用",
+    "endpointHint": "请填写 {{tool}} 对应的 Base URL；换服务商时，也要换成该服务商的 API Key。",
+    "title": "配置 API 地址、密钥与模型",
+    "intro": "填写下方配置并测试，再预览导入到 CC Switch；Codex 也可展开手动配置后确认应用。",
+    "valuesDescription": "填写或修改下方三项；不确定模型名时，先查看服务商的模型列表。"
   }
 }

@@ -18,6 +18,8 @@ import { ToolGuide } from "./ToolGuide";
 export function ConfigureScreen() {
   const { t } = useTranslation();
   const selectedTools = useWizardStore((s) => s.selectedTools);
+  const setupMode = useWizardStore((s) => s.setupMode);
+  const goTo = useWizardStore((s) => s.goTo);
   const next = useWizardStore((s) => s.next);
   const back = useWizardStore((s) => s.back);
   const openHelp = useWizardStore((s) => s.openHelp);
@@ -29,11 +31,26 @@ export function ConfigureScreen() {
   return (
     <div className="mx-auto max-w-3xl space-y-5">
       <div>
-        <h1 className="text-2xl font-semibold">{t("guide:title")}</h1>
+        <h1 className="text-2xl font-semibold">
+          {t(setupMode === "quick" ? "guide:quick.title" : "guide:title")}
+        </h1>
         <p className="mt-2 text-sm leading-6 text-neutral-600 dark:text-neutral-300">
-          {t("guide:intro")}
+          {t(setupMode === "quick" ? "guide:quick.intro" : "guide:intro")}
         </p>
       </div>
+
+      {setupMode === "quick" && (
+        <Alert
+          variant="info"
+          actions={
+            <Button variant="secondary" size="sm" onClick={() => goTo("env_check")}>
+              {t("guide:quick.checkEnvironment")}
+            </Button>
+          }
+        >
+          {t("guide:quick.notice")}
+        </Alert>
+      )}
 
       {selectedTools.length > 1 && activeTool && (
         <ToolTabs tools={selectedTools} active={activeTool} onSelect={setChosenTool} />
@@ -41,7 +58,7 @@ export function ConfigureScreen() {
 
       {activeTool ? (
         <div id={`configure-panel-${activeTool}`} role="tabpanel">
-          <ToolGuide key={activeTool} tool={activeTool} />
+          <ToolGuide key={activeTool} tool={activeTool} simple={setupMode === "quick"} />
         </div>
       ) : (
         <Alert variant="warning">{t("welcome.selectTools")}</Alert>

@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/easyrouter/llm-api-tutorial.git"
   },
-  "description": "Codex / Claude Code onboarding assistant (Tauri 2 + React) — guided environment check, install, CC Switch configuration walkthrough, verification and auto-diagnosis.",
+  "description": "Beginner-friendly API setup for Codex and Claude Code: edit Base URL, API key and model, preview changes, import with CC Switch, and diagnose connections. Sponsored by SeedRouter.",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -30,8 +30,9 @@
     "rust:fmt:check": "cargo fmt --manifest-path src-tauri/Cargo.toml --all -- --check",
     "rust:clippy": "cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings",
     "rust:test": "cargo test --manifest-path src-tauri/Cargo.toml",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run i18n:check && npm run nsis:check && npm run test && npm run rust:fmt:check && npm run rust:clippy && npm run rust:test",
-    "prepare": "git config core.hooksPath .githooks || true"
+    "check": "npm run format:check && npm run docs:check && npm run lint && npm run typecheck && npm run i18n:check && npm run nsis:check && npm run test && npm run rust:fmt:check && npm run rust:clippy && npm run rust:test",
+    "prepare": "git config core.hooksPath .githooks || true",
+    "docs:check": "node scripts/check-docs.mjs"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.11.1",

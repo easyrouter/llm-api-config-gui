@@ -15,6 +15,7 @@ import { ProviderValuesCard } from "./ProviderValuesCard";
 
 export interface ToolGuideProps {
   tool: ToolId;
+  simple?: boolean;
 }
 
 /**
@@ -23,7 +24,7 @@ export interface ToolGuideProps {
  * steps. Mount it with `key={tool}` so switching tabs remounts everything — including the API
  * key, which lives only in this subtree's state and must not survive a tab change.
  */
-export function ToolGuide({ tool }: ToolGuideProps) {
+export function ToolGuide({ tool, simple = false }: ToolGuideProps) {
   const { t } = useTranslation();
   const guide = useAsync(getConfigGuide);
   const { run } = guide;
@@ -44,7 +45,7 @@ export function ToolGuide({ tool }: ToolGuideProps) {
     );
   }
 
-  return <LoadedGuide guide={guide.data} />;
+  return <LoadedGuide guide={guide.data} simple={simple} />;
 }
 
 /**
@@ -52,8 +53,9 @@ export function ToolGuide({ tool }: ToolGuideProps) {
  * the account path: `chatgpt_login` (CC Switch "OpenAI Official" preset + sign in) or `api_key`
  * (custom provider with the gateway key). The path is session state only — never persisted.
  */
-function LoadedGuide({ guide }: { guide: ConfigGuide }) {
+function LoadedGuide({ guide, simple }: { guide: ConfigGuide; simple: boolean }) {
   const { t } = useTranslation();
+  const [detailed, setDetailed] = useState(!simple);
   const isCodex = guide.tool === "codex";
   const [branch, setBranch] = useState<GuideBranch>("api_key");
   const activeBranch: GuideBranch | null = isCodex ? branch : null;
@@ -66,13 +68,27 @@ function LoadedGuide({ guide }: { guide: ConfigGuide }) {
 
   return (
     <div className="space-y-5" data-testid={`tool-guide-${guide.tool}`}>
-      {isCodex && (
+      {simple && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={detailed}
+            onChange={(event) => {
+              setDetailed(event.target.checked);
+              setBranch("api_key");
+            }}
+          />
+          {t("guide:quick.detailed")}
+        </label>
+      )}
+      {detailed && isCodex && (
         <Alert variant="info" data-testid="codex-client-note">
           {t("guide:codexClientNote")}
         </Alert>
       )}
-      {isCodex && <AccountPathCard branch={branch} onChange={setBranch} />}
+      {detailed && isCodex && <AccountPathCard branch={branch} onChange={setBranch} />}
       <ProviderValuesCard
+        simple={!detailed}
         tool={guide.tool}
         preset={guide.preset}
         branch={activeBranch}
@@ -95,25 +111,33 @@ function LoadedGuide({ guide }: { guide: ConfigGuide }) {
           apiKey={apiKey}
         />
       )}
-      {isCodex && (
-        <CodexConfigCard
-          preset={guide.preset}
-          providerName={providerName}
-          baseUrl={baseUrl}
-          model={model}
-          apiKey={apiKey}
-        />
-      )}
-      <GuideStepList
-        guide={guide}
-        branch={activeBranch}
-        live={{ providerName, baseUrl, model }}
-        probe={{ baseUrl, apiKey, protocol }}
-        onPickModel={setModel}
-      />
+      <details
+        open={detailed || undefined}
+        className="rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
+      >
+        <summary className="cursor-pointer text-sm font-medium">{t("guide:quick.manual")}</summary>
+        <div className="mt-4 space-y-5">
+          {isCodex && (
+            <CodexConfigCard
+              preset={guide.preset}
+              providerName={providerName}
+              baseUrl={baseUrl}
+              model={model}
+              apiKey={apiKey}
+            />
+          )}
+          <GuideStepList
+            guide={guide}
+            branch={activeBranch}
+            live={{ providerName, baseUrl, model }}
+            probe={{ baseUrl, apiKey, protocol }}
+            onPickModel={setModel}
+          />
+        </div>
+      </details>
       {/* Windows-only; the card renders nothing elsewhere (ADR-0007). Signed-in users get the
           speed option natively, so the patch is offered on the API-key path only. */}
-      {activeBranch === "api_key" && <CodexFastUiCard />}
+      {detailed && activeBranch === "api_key" && <CodexFastUiCard />}
     </div>
   );
 }

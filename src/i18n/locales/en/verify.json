@@ -21,7 +21,7 @@
     "apiKeyPlaceholder": "Paste the key here (used once)",
     "show": "Show",
     "hide": "Hide",
-    "keyNote": "The key is held in memory only for this one request: it is cleared as soon as the request is sent and is never stored, logged, uploaded or written to a report.",
+    "keyNote": "The test sends your key to the entered gateway. The input is cleared once sent; it is not retained in this assistant’s persistent storage, logs, telemetry or reports.",
     "protocol": "Protocol: {{protocol}}",
     "notHttps": "This address is not https, so the key would travel unencrypted. The tool only sends the key over https; use the service gateway address.",
     "missingFields": "Enter the gateway address, model and API key before verifying."

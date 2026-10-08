@@ -85,3 +85,41 @@ describe("wizard store", () => {
     expect(state().helpRequestId).toBe(0);
   });
 });
+
+describe("quick API configuration", () => {
+  it("skips installation without claiming an environment check passed", () => {
+    useWizardStore.getState().reset();
+    useWizardStore.getState().startSetup("quick");
+    expect(useWizardStore.getState().step).toBe("configure");
+    expect(useWizardStore.getState().snapshot).toBeNull();
+    useWizardStore.getState().back();
+    expect(useWizardStore.getState().step).toBe("welcome");
+    useWizardStore.getState().next();
+    expect(useWizardStore.getState().step).toBe("configure");
+    useWizardStore.getState().next();
+    expect(useWizardStore.getState().step).toBe("verify");
+    useWizardStore.getState().back();
+    expect(useWizardStore.getState().step).toBe("configure");
+  });
+
+  it("can return to the complete environment and installation flow", () => {
+    useWizardStore.getState().reset();
+    useWizardStore.getState().startSetup("quick");
+    useWizardStore.getState().goTo("env_check");
+    expect(useWizardStore.getState().setupMode).toBe("full");
+    useWizardStore.getState().next();
+    expect(useWizardStore.getState().step).toBe("install");
+  });
+
+  it("does not start without a selected tool or while navigation is locked", () => {
+    useWizardStore.getState().reset();
+    useWizardStore.getState().setSelectedTools([]);
+    useWizardStore.getState().startSetup("quick");
+    expect(useWizardStore.getState().step).toBe("welcome");
+    useWizardStore.getState().setSelectedTools(["codex"]);
+    useWizardStore.getState().setNavigationLocked(true);
+    useWizardStore.getState().startSetup("quick");
+    expect(useWizardStore.getState().step).toBe("welcome");
+    useWizardStore.getState().reset();
+  });
+});

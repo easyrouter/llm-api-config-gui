@@ -40,7 +40,7 @@
   },
   "import": {
     "title": "One-click import into CC Switch",
-    "description": "Hands the values above straight to your local CC Switch (a recent version is required). CC Switch opens its own confirmation dialog and writes its own configuration — this tool still never touches any config file.",
+    "description": "Hand these values to a local CC Switch version that supports import. It shows its own confirmation and writes its own configuration. This import action does not directly write files in the assistant.",
     "button": "Import into CC Switch",
     "needsValues": "Enter the provider name, API address and API key first (the model is optional).",
     "editNote": "Importing again creates a new provider instead of overwriting the old one; to change an existing provider, edit it inside CC Switch. The manual steps below remain available.",
@@ -219,7 +219,7 @@
     "show": "Show",
     "hide": "Hide",
     "clear": "Clear",
-    "privacy": "The key stays in this page's memory only — used for the connectivity test, the model list and, after you confirm, the one-click import. It is never written to disk, logged or uploaded, and is cleared when you leave this page.",
+    "privacy": "The input stays in this page’s memory. Tests send it to the entered gateway; copying uses the clipboard; confirmed Codex apply or CC Switch import may save it in target files and backups. Leaving clears the input, not the key or target configuration.",
     "valid": "The format looks fine ({{length}} characters).",
     "invalid": "The key format has problems that need fixing:",
     "hintLabel": "Hint",
@@ -277,5 +277,15 @@
       "label": "I have no ChatGPT account",
       "description": "Add a custom provider in CC Switch with the service gateway URL and your API key."
     }
+  },
+  "quick": {
+    "notice": "Quick setup skips installation and environment checks; it does not mark them as passed. Connection tests may incur provider usage charges.",
+    "checkEnvironment": "Check environment first",
+    "detailed": "Show all configuration options",
+    "manual": "Not using CC Switch? Manual configuration and safe Codex apply",
+    "endpointHint": "Use the Base URL for {{tool}}. When changing providers, use that provider’s API key too.",
+    "title": "Configure your API endpoint, key and model",
+    "intro": "Enter your settings, test the connection, then preview a CC Switch import. For Codex, you can also expand manual configuration and confirm an apply.",
+    "valuesDescription": "Edit the three fields below. Check your provider’s model list if you are unsure of the model ID."
   }
 }
