@@ -17,7 +17,7 @@ const docs = [
   "docs/README.md",
   "docs/PROJECT-FACTS.md",
 ];
-const canonical = "https://github.com/easyrouter/seedrouter-api-setup";
+const canonical = "https://github.com/easyrouter/llm-api-config-gui";
 const errors = [];
 const links = new Map();
 for (const file of docs) {
@@ -48,7 +48,7 @@ for (const file of ["README.md", "README.zh-CN.md"]) {
   if (!text.includes("docs/PROJECT-FACTS.md"))
     errors.push(`${file}: missing evidence/scope reference`);
 }
-if (!readFileSync("README.md", "utf8").startsWith("# SeedRouter API Setup"))
+if (!readFileSync("README.md", "utf8").startsWith("# LLM API Config GUI"))
   errors.push("README.md: expected English project homepage");
 if (!readFileSync("README.en.md", "utf8").includes("(README.md)"))
   errors.push("README.en.md: missing compatibility link");

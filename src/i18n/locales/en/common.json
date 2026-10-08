@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "SeedRouter API Setup",
+    "name": "LLM API Config GUI",
     "tagline": "Change your API, verify the connection, or start from scratch",
     "version": "Version {{version}}",
     "language": "Language"

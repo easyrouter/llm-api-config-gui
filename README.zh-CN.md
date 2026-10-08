@@ -1,8 +1,8 @@
-# SeedRouter API 配置助手：Codex / Claude Code 图形化配置工具
+# LLM API 图形化配置工具 — Codex / Claude Code API 配置
 
-[English](README.md) · [快速开始](docs/QUICKSTART.md) · [常见错误](docs/TROUBLESHOOTING.md) · [文档导航](docs/README.md) · [项目事实与限制](docs/PROJECT-FACTS.md) · [下载页面](https://github.com/easyrouter/seedrouter-api-setup/releases) · [SeedRouter 官网](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=seedrouter-api-setup)
+[English](README.md) · [快速开始](docs/QUICKSTART.md) · [常见错误](docs/TROUBLESHOOTING.md) · [文档导航](docs/README.md) · [项目事实与限制](docs/PROJECT-FACTS.md) · [下载页面](https://github.com/easyrouter/llm-api-config-gui/releases) · [SeedRouter 官网](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-config-gui)
 
-SeedRouter API Setup 是一个开源桌面配置助手，支持 Windows 和 macOS 上的 Codex 与 Claude Code。你可以在图形界面中修改 Base URL、API Key 和模型。你可以预览配置并导入 CC Switch，也可以检查并应用 Codex 配置，同时保留备份。如果你已经安装了这些工具，可以直接开始配置。如果你是第一次使用，可以从环境检查和安装开始。
+LLM API 图形化配置工具是一款开源桌面软件，支持 Windows 和 macOS，用来配置 Codex 与 Claude Code 的 LLM API。你可以在界面中直接修改 Base URL、API Key 和模型。你可以预览 CC Switch 的导入内容，也可以核对并应用带有备份的 Codex 配置。如果你已经装好了工具，可以直接配置 API。新用户可以先从环境检查和安装开始。
 
 > **版本说明**：本 README 描述当前源码。新的「直接配置 API」入口尚未发布安装包；现有 v0.2.0 使用完整引导流程。下载前请阅读 Release 说明，未签名构建不等于已签名、公证的正式版。
 
@@ -26,7 +26,7 @@ SeedRouter API Setup 是一个开源桌面配置助手，支持 Windows 和 macO
 
 ## 快速开始：四步配置 API
 
-1. **准备工具**：从 [Releases](https://github.com/easyrouter/seedrouter-api-setup/releases) 查看构建说明，或按下方命令运行当前源码。
+1. **准备工具**：从 [Releases](https://github.com/easyrouter/llm-api-config-gui/releases) 查看构建说明，或按下方命令运行当前源码。
 2. **选择入口**：已安装工具选择「直接配置 API」；首次使用选择「开始检查」。
 3. **填写并测试**：填写 API Key，确认 Base URL 和模型，再主动运行连接测试。
 4. **确认修改**：选择 CC Switch 导入，或展开 Codex 手动配置；完成后重新打开终端并验证。
@@ -54,15 +54,15 @@ Claude Code 会追加 `/v1/messages`，不要把完整接口路径填进 Base UR
 
 SeedRouter 赞助了这个项目，并提供默认 API 预设。你可以在 https://seedrouter.net/ 创建 API Key，查看模型和价格，也可以使用其他兼容的服务商。这个配置工具按 Apache-2.0 许可证开源。API 调用与连接测试是否收费、如何计费，由你选择的服务商决定。
 
-[获取 SeedRouter API Key](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=seedrouter-api-setup) · [接入文档](https://seedrouter.net/doc/)
+[获取 SeedRouter API Key](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-config-gui) · [接入文档](https://seedrouter.net/doc/)
 
 ## 本地运行与开发
 
 需要 Node.js ≥ 20、Rust stable 和对应系统的 Tauri 构建依赖。只想使用软件的用户不需要安装开发环境；请先查看下载页面的构建说明。
 
 ```bash
-git clone https://github.com/easyrouter/seedrouter-api-setup.git
-cd seedrouter-api-setup
+git clone https://github.com/easyrouter/llm-api-config-gui.git
+cd llm-api-config-gui
 npm ci
 npm run tauri dev
 ```
@@ -106,7 +106,7 @@ npm run build      # 前端生产构建；不等于桌面安装包
 
 ## 反馈与参与
 
-通过 [GitHub Issues](https://github.com/easyrouter/seedrouter-api-setup/issues) 提交复现步骤，请勿上传 API Key、完整配置文件或含个人信息的日志。欢迎修正文档、补充测试和分享实际配置经验。
+通过 [GitHub Issues](https://github.com/easyrouter/llm-api-config-gui/issues) 提交复现步骤，请勿上传 API Key、完整配置文件或含个人信息的日志。欢迎修正文档、补充测试和分享实际配置经验。
 
 本项目不是 OpenAI 或 Anthropic 的官方客户端，不代表它们提供支持或背书。
 

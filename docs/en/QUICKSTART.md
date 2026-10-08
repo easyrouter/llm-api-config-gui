@@ -8,11 +8,11 @@
 - A Base URL, API key, and model ID from the same provider.
 - CC Switch if you want to use the import workflow. Codex also has a separate preview, backup, and apply workflow.
 
-For SeedRouter, start at [seedrouter.net](https://seedrouter.net/?utm_source=github&utm_medium=guide&utm_campaign=seedrouter-api-setup) and check the current model catalog and pricing. You can use another compatible provider; its address, credentials, and model access must match.
+For SeedRouter, start at [seedrouter.net](https://seedrouter.net/?utm_source=github&utm_medium=guide&utm_campaign=llm-api-config-gui) and check the current model catalog and pricing. You can use another compatible provider; its address, credentials, and model access must match.
 
 ## Already installed? Use quick API setup
 
-The **Configure API now** shortcut is available in the current source. Existing v0.2.0 installers use the full onboarding flow; check the [release notes](https://github.com/easyrouter/seedrouter-api-setup/releases) before downloading.
+The **Configure API now** shortcut is available in the current source. Existing v0.2.0 installers use the full onboarding flow; check the [release notes](https://github.com/easyrouter/llm-api-config-gui/releases) before downloading.
 
 1. Select Codex, Claude Code, or both on the welcome screen.
 2. Choose **Configure API now**. This skips environment checks and installation; it does not mark either as passed.

@@ -5,9 +5,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Naming correction
+
+- Use the generic product name **LLM API Config GUI** and repository name `llm-api-config-gui`, with SeedRouter retained as the sponsor and optional provider rather than the product name.
+
+
 ### Documentation and project identity
 
-- Rename the public repository to `seedrouter-api-setup`, make English the default README, and provide `README.zh-CN.md` for Simplified Chinese.
+- Rename the public repository to `llm-api-config-gui`, make English the default README, and provide `README.zh-CN.md` for Simplified Chinese.
 - Add English task guides, bilingual documentation navigation, a source-linked project fact sheet, and checks for canonical repository links and language entry points.
 
 

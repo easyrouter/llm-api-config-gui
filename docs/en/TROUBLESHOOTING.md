@@ -33,4 +33,4 @@ No. The result applies only to the endpoint, key, and model used for that reques
 - Minimal steps, expected behavior, and actual behavior.
 - Redacted error codes, not a full credential-bearing configuration.
 
-Use the [issue template](https://github.com/easyrouter/seedrouter-api-setup/issues/new/choose). If a key was exposed, revoke or rotate it with the provider before waiting for a response.
+Use the [issue template](https://github.com/easyrouter/llm-api-config-gui/issues/new/choose). If a key was exposed, revoke or rotate it with the provider before waiting for a response.

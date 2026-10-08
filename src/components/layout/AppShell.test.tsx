@@ -28,6 +28,12 @@ describe("AppShell", () => {
     });
   });
 
+  it("uses the generic product name while keeping the sponsor separate", () => {
+    render(<AppShell>body</AppShell>);
+    expect(screen.getByRole("heading", { name: "LLM API Config GUI" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /seedrouter\.net/ })).toBeInTheDocument();
+  });
+
   it("opens the brand site from the header link next to the version", () => {
     render(<AppShell>body</AppShell>);
     expect(screen.getByText("Version 0.1.0")).toBeInTheDocument();

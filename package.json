@@ -5,9 +5,9 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/easyrouter/seedrouter-api-setup.git"
+    "url": "https://github.com/easyrouter/llm-api-config-gui.git"
   },
-  "description": "SeedRouter API Setup: open-source desktop API configuration for Codex and Claude Code. Edit Base URL, API key and model, preview CC Switch imports, and diagnose errors.",
+  "description": "LLM API Config GUI: a graphical API configuration tool for Codex and Claude Code. Edit Base URL, API key and model; preview CC Switch imports and back up Codex config.",
   "type": "module",
   "engines": {
     "node": ">=20"
@@ -75,16 +75,20 @@
   },
   "homepage": "https://seedrouter.net/",
   "bugs": {
-    "url": "https://github.com/easyrouter/seedrouter-api-setup/issues"
+    "url": "https://github.com/easyrouter/llm-api-config-gui/issues"
   },
   "keywords": [
+    "llm",
+    "llm-api",
+    "gui",
+    "api-configuration",
+    "configuration",
     "codex",
     "claude-code",
-    "api-configuration",
-    "base-url",
     "api-key",
+    "base-url",
     "cc-switch",
-    "llm-gateway",
+    "desktop-app",
     "tauri",
     "windows",
     "macos"

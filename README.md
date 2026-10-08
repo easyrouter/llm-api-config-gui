@@ -1,10 +1,10 @@
-# SeedRouter API Setup — Codex & Claude Code API Configuration
+# LLM API Config GUI — Graphical API Configuration for Codex & Claude Code
 
-**English** · [简体中文](README.zh-CN.md) · [Quick start](docs/en/QUICKSTART.md) · [Documentation](docs/README.md) · [Downloads](https://github.com/easyrouter/seedrouter-api-setup/releases)
+**English** · [简体中文](README.zh-CN.md) · [Quick start](docs/en/QUICKSTART.md) · [Documentation](docs/README.md) · [Downloads](https://github.com/easyrouter/llm-api-config-gui/releases)
 
-[![CI](https://github.com/easyrouter/seedrouter-api-setup/actions/workflows/ci.yml/badge.svg)](https://github.com/easyrouter/seedrouter-api-setup/actions/workflows/ci.yml)
+[![CI](https://github.com/easyrouter/llm-api-config-gui/actions/workflows/ci.yml/badge.svg)](https://github.com/easyrouter/llm-api-config-gui/actions/workflows/ci.yml)
 
-SeedRouter API Setup is an open-source desktop app for configuring Codex and Claude Code on Windows and macOS. Use the guided interface to change your API Base URL, API key, and model. Preview a CC Switch import, or review and apply a Codex configuration with a backup. If you already have the tools installed, go straight to API setup. If you are a new user, start with the environment check and installation.
+LLM API Config GUI is an open-source desktop app for Windows and macOS. It sets up LLM APIs in Codex and Claude Code. You can use the interface to change the Base URL, API key, and model. Preview a CC Switch import, or review and apply a Codex configuration with a backup. If the tools are already installed, go straight to API setup. New users can start with an environment check and installation.
 
 **Windows & macOS · English & 简体中文 · Apache-2.0 · Custom API providers supported**
 
@@ -25,7 +25,7 @@ This is a **desktop API configuration assistant**, not an LLM API service, rever
 
 ## Quick start
 
-1. **Choose a version.** See [Releases](https://github.com/easyrouter/seedrouter-api-setup/releases) for existing builds, or run the current source using the development commands below.
+1. **Choose a version.** See [Releases](https://github.com/easyrouter/llm-api-config-gui/releases) for existing builds, or run the current source using the development commands below.
 2. **Choose your path.** Select your tools. Use **Configure API now** if installed; use the full environment-check flow on a new machine.
 3. **Enter and test settings.** Supply the matching Base URL, API key, and model. Verify the destination before sending credentials.
 4. **Preview and confirm.** Import into CC Switch and activate there, or review and apply the Codex template. Restart the client and verify.
@@ -80,7 +80,7 @@ No. SeedRouter is the sponsor and default preset. You can use another provider t
 
 ### How is this different from CC Switch?
 
-SeedRouter API Setup focuses on guided onboarding, environment checks, configuration previews, and diagnosis. CC Switch is a separate provider-configuration manager. This assistant can hand an import to it; it does not claim CC Switch's capabilities as its own implementation.
+LLM API Config GUI focuses on guided onboarding, environment checks, configuration previews, and diagnosis. CC Switch is a separate provider-configuration manager. This assistant can hand an import to it; it does not claim CC Switch's capabilities as its own implementation.
 
 ### Does a successful connection test mean every client feature works?
 
@@ -94,15 +94,15 @@ No. It is an independent open-source project and does not imply endorsement by O
 
 SeedRouter sponsors this project and provides its default API preset. You can create an API key and check models and pricing at https://seedrouter.net/, or use another compatible provider. The configuration tool is open source under Apache-2.0. Your provider sets the pricing for API usage, including connection tests.
 
-[Get a SeedRouter API key](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=seedrouter-api-setup) · [SeedRouter integration docs](https://seedrouter.net/doc/)
+[Get a SeedRouter API key](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-config-gui) · [SeedRouter integration docs](https://seedrouter.net/doc/)
 
 ## Development
 
 Node.js ≥ 20, stable Rust, and the platform's Tauri prerequisites are required. See [development setup](docs/DEVELOPMENT.md).
 
 ```bash
-git clone https://github.com/easyrouter/seedrouter-api-setup.git
-cd seedrouter-api-setup
+git clone https://github.com/easyrouter/llm-api-config-gui.git
+cd llm-api-config-gui
 npm ci
 npm run tauri dev
 ```
@@ -117,6 +117,6 @@ npm run build      # Frontend production build, not a desktop installer
 
 ## Feedback and license
 
-Report reproducible setup issues with the [issue template](https://github.com/easyrouter/seedrouter-api-setup/issues/new/choose). Never include real API keys or unredacted configuration files.
+Report reproducible setup issues with the [issue template](https://github.com/easyrouter/llm-api-config-gui/issues/new/choose). Never include real API keys or unredacted configuration files.
 
 Licensed under [Apache-2.0](LICENSE). Attribution and third-party notices are preserved in [NOTICE](NOTICE).

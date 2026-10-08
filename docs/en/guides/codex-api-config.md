@@ -15,7 +15,7 @@ Check the provider's live model catalog rather than treating this assistant's bu
 
 ## How do you change the Codex API without editing TOML manually?
 
-1. Select Codex in SeedRouter API Setup.
+1. Select Codex in LLM API Config GUI.
 2. Enter the endpoint, API key, and model; optionally test the connection.
 3. Preview the CC Switch import and confirm opening CC Switch.
 4. Confirm and activate the provider there.

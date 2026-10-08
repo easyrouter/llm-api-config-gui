@@ -24,7 +24,7 @@ For this SeedRouter preset, do not enter `https://seedrouter.net/v1` or a comple
 5. Confirm and activate the provider in CC Switch.
 6. Restart your terminal, run `claude`, and verify the result.
 
-SeedRouter API Setup does not directly write `~/.claude` or the CC Switch database. CC Switch performs its own confirmed configuration changes.
+LLM API Config GUI does not directly write `~/.claude` or the CC Switch database. CC Switch performs its own confirmed configuration changes.
 
 ## What should you check for manual configuration?
 

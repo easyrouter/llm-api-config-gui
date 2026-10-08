@@ -32,4 +32,4 @@
 - 最少复现步骤、期望结果、实际结果。
 - 脱敏后的错误码；截图前检查 URL 参数、Key、账户和路径。
 
-[提交 GitHub Issue](https://github.com/easyrouter/seedrouter-api-setup/issues/new/choose)。疑似凭据泄露先在服务商处撤销 Key，不要等待他人回复。
+[提交 GitHub Issue](https://github.com/easyrouter/llm-api-config-gui/issues/new/choose)。疑似凭据泄露先在服务商处撤销 Key，不要等待他人回复。

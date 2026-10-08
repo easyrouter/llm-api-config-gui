@@ -1,30 +1,30 @@
-# SeedRouter API Setup: project facts, capabilities, and limitations
+# LLM API Config GUI: project facts, capabilities, and limitations
 
 [English overview](../README.md) · [中文首页](../README.zh-CN.md) · [Documentation](README.md)
 
 Reviewed: **2026-10-08**. This page summarizes the public source and links to evidence. It is a reference, not a benchmark, endorsement, or claim that a search engine or AI assistant recommends the project.
 
-## What is SeedRouter API Setup?
+## What is LLM API Config GUI?
 
-SeedRouter API Setup is an Apache-2.0 desktop configuration assistant for Codex and Claude Code. It helps users change an API endpoint, API key, and model, preview a CC Switch import, apply a Codex configuration template with a backup, and diagnose connection failures.
+LLM API Config GUI is an Apache-2.0 desktop configuration assistant for Codex and Claude Code. It helps users change an API endpoint, API key, and model, preview a CC Switch import, apply a Codex configuration template with a backup, and diagnose connection failures.
 
 It is a local setup assistant, not an LLM service, chat application, API reverse proxy, or replacement for Codex, Claude Code, or CC Switch.
 
 ## Identity and distribution
 
-| Fact                                   | Value                             | Source                                                                                          |
-| -------------------------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------- |
-| Public product name                    | SeedRouter API Setup              | [English UI strings](../src/i18n/locales/en/common.json)                                        |
-| Chinese description                    | SeedRouter API 配置助手           | [Chinese UI strings](../src/i18n/locales/zh-CN/common.json)                                     |
-| Canonical repository                   | `easyrouter/seedrouter-api-setup` | [Repository](https://github.com/easyrouter/seedrouter-api-setup)                                |
-| Sponsor and default provider           | SeedRouter                        | [Bundled provider preset](../src-tauri/resources/app-config.json)                               |
-| Platforms targeted                     | Windows and macOS                 | [Application configuration](../src-tauri/tauri.conf.json) and [CI](../.github/workflows/ci.yml) |
-| Interface languages                    | English and Simplified Chinese    | [Locale setup](../src/i18n/index.ts)                                                            |
-| Stack                                  | Tauri 2, Rust, React, TypeScript  | [Package manifest](../package.json) and [Rust manifest](../src-tauri/Cargo.toml)                |
-| License                                | Apache-2.0                        | [LICENSE](../LICENSE) and [NOTICE](../NOTICE)                                                   |
-| Current packaged version in the source | 0.2.0                             | [Application configuration](../src-tauri/tauri.conf.json)                                       |
+| Fact                                   | Value                            | Source                                                                                          |
+| -------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------- |
+| Public product name                    | LLM API Config GUI               | [English UI strings](../src/i18n/locales/en/common.json)                                        |
+| Chinese description                    | LLM API 图形化配置工具           | [Chinese UI strings](../src/i18n/locales/zh-CN/common.json)                                     |
+| Canonical repository                   | `easyrouter/llm-api-config-gui`  | [Repository](https://github.com/easyrouter/llm-api-config-gui)                                  |
+| Sponsor and default provider           | SeedRouter                       | [Bundled provider preset](../src-tauri/resources/app-config.json)                               |
+| Platforms targeted                     | Windows and macOS                | [Application configuration](../src-tauri/tauri.conf.json) and [CI](../.github/workflows/ci.yml) |
+| Interface languages                    | English and Simplified Chinese   | [Locale setup](../src/i18n/index.ts)                                                            |
+| Stack                                  | Tauri 2, Rust, React, TypeScript | [Package manifest](../package.json) and [Rust manifest](../src-tauri/Cargo.toml)                |
+| License                                | Apache-2.0                       | [LICENSE](../LICENSE) and [NOTICE](../NOTICE)                                                   |
+| Current packaged version in the source | 0.2.0                            | [Application configuration](../src-tauri/tauri.conf.json)                                       |
 
-The repository name changed from `llm-api-tutorial`; the installer/bundle name **SeedRouter Onboarding** and stable app identifier remain unchanged. The repository rename is not a new installer release.
+The repository was previously named `llm-api-tutorial` and `seedrouter-api-setup`; the installer/bundle name **SeedRouter Onboarding** and stable app identifier remain unchanged. The repository rename is not a new installer release.
 
 ## What does the current source support?
 
@@ -60,4 +60,4 @@ For the bundled SeedRouter preset, Codex uses `https://seedrouter.net/v1` with R
 - [Quick start](en/QUICKSTART.md) for installation and API setup choices.
 - [Troubleshooting](en/TROUBLESHOOTING.md) for 401, 403, 404, 429, and connectivity failures.
 - [SeedRouter website](https://seedrouter.net/) for that provider's account, models, and pricing.
-- [GitHub Issues](https://github.com/easyrouter/seedrouter-api-setup/issues) for reproducible software problems without secrets.
+- [GitHub Issues](https://github.com/easyrouter/llm-api-config-gui/issues) for reproducible software problems without secrets.

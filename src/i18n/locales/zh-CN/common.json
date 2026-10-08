@@ -1,6 +1,6 @@
 {
   "app": {
-    "name": "SeedRouter API 配置助手",
+    "name": "LLM API 图形化配置工具",
     "tagline": "修改 API、验证连接，或从零开始安装",
     "version": "版本 {{version}}",
     "language": "语言"

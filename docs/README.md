@@ -1,4 +1,4 @@
-# SeedRouter API Setup documentation
+# LLM API Config GUI documentation
 
 [Project overview](../README.md) · [中文首页](../README.zh-CN.md) · [Project facts](PROJECT-FACTS.md)
 
@@ -16,7 +16,7 @@
 
 - [Project facts and source evidence](PROJECT-FACTS.md): supported workflows, provider choice, credential handling, release boundaries, and non-goals.
 - [Security](../SECURITY.md): keys, clipboard, imports, configuration files, and backups.
-- [Releases](https://github.com/easyrouter/seedrouter-api-setup/releases): downloadable versions and their actual release notes.
+- [Releases](https://github.com/easyrouter/llm-api-config-gui/releases): downloadable versions and their actual release notes.
 - [SeedRouter documentation](https://seedrouter.net/doc/): the sponsor's live API integration information.
 
 ## Develop and contribute

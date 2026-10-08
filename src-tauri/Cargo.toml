@@ -1,12 +1,12 @@
 [package]
 name = "seedrouter-onboarding"
 version = "0.2.0"
-description = "SeedRouter API Setup — desktop API configuration for Codex and Claude Code, with guided setup, CC Switch import previews and connection diagnosis."
+description = "LLM API Config GUI — desktop API configuration for Codex and Claude Code, with guided setup, CC Switch import previews and connection diagnosis."
 authors = ["IT Tooling Team"]
 edition = "2021"
 rust-version = "1.85"
 license = "Apache-2.0"
-repository = "https://github.com/easyrouter/seedrouter-api-setup"
+repository = "https://github.com/easyrouter/llm-api-config-gui"
 publish = false
 
 [lib]
