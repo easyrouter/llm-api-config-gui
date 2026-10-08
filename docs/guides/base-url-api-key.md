@@ -1,6 +1,7 @@
 # Base URL、API Key 和模型名：配置 AI API 前先分清三件事
 
-[返回首页](../../README.md) · [快速开始](../QUICKSTART.md)
+[English](../en/guides/base-url-api-key.md)
+[返回首页](../../README.zh-CN.md) · [快速开始](../QUICKSTART.md)
 
 | 名称            | 作用                     | 常见误填                                 |
 | --------------- | ------------------------ | ---------------------------------------- |

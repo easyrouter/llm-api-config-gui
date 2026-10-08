@@ -1,93 +1,122 @@
-# SeedRouter API 配置助手：Codex / Claude Code 图形化配置工具
+# SeedRouter API Setup — Codex & Claude Code API Configuration
 
-[English](README.en.md) · [快速开始](docs/QUICKSTART.md) · [常见错误](docs/TROUBLESHOOTING.md) · [下载页面](https://github.com/easyrouter/llm-api-tutorial/releases) · [SeedRouter 官网](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-tutorial)
+**English** · [简体中文](README.zh-CN.md) · [Quick start](docs/en/QUICKSTART.md) · [Documentation](docs/README.md) · [Downloads](https://github.com/easyrouter/seedrouter-api-setup/releases)
 
-SeedRouter API 配置助手帮你修改 Codex 和 Claude Code 的 API 地址、密钥与模型。如果你已经装好工具，可以直接开始配置。第一次使用时，你可以先检查环境，再安装缺少的组件。修改前会显示预览。写入 Codex 配置前，它会先备份原文件。
+[![CI](https://github.com/easyrouter/seedrouter-api-setup/actions/workflows/ci.yml/badge.svg)](https://github.com/easyrouter/seedrouter-api-setup/actions/workflows/ci.yml)
 
-> **版本说明**：本 README 描述当前源码。新的「直接配置 API」入口尚未发布安装包；现有 v0.2.0 使用完整引导流程。下载前请阅读 Release 说明，未签名构建不等于已签名、公证的正式版。
+SeedRouter API Setup is an open-source desktop app for configuring Codex and Claude Code on Windows and macOS. Use the guided interface to change your API Base URL, API key, and model. Preview a CC Switch import, or review and apply a Codex configuration with a backup. If you already have the tools installed, go straight to API setup. If you are a new user, start with the environment check and installation.
 
-## 适合谁使用
+**Windows & macOS · English & 简体中文 · Apache-2.0 · Custom API providers supported**
 
-- 已装好 Codex CLI、Codex 客户端或 Claude Code，只想修改 Base URL、API Key 或模型。
-- 第一次配置 AI 编程工具，不确定 Node.js、PATH 和 API 地址是否正确。
-- 使用 SeedRouter 或其他兼容网关，需要先检查连接，再确认修改。
+> **Source vs installers:** the new **Configure API now** shortcut is in the current source, not in the existing v0.2.0 installers. Read each release's notes and signing status. This repository was previously named `llm-api-tutorial`; the rename does not publish a new installer.
 
-## 能做什么
+## What can you configure?
 
-| 场景                           | 操作                                           | 安全边界                                  |
-| ------------------------------ | ---------------------------------------------- | ----------------------------------------- |
-| 已安装，想换 API               | 「直接配置 API」→ 填写地址、模型、密钥         | 跳过安装，不假装环境已检查                |
-| 新电脑首次使用                 | 「开始检查」→ 检查环境 → 按需安装              | 运行前展示命令，安装需要确认              |
-| Codex / Claude Code 切换服务商 | 预览后交给 CC Switch 导入，再在 CC Switch 激活 | 不直接改写 CC Switch 数据库或 Claude 配置 |
-| 不使用 CC Switch 的 Codex 用户 | 展开手动配置 → 预览 → 确认应用                 | 先备份 `config.toml`，可恢复最近备份      |
-| API 无法连接                   | 连接测试、模型检查、错误诊断                   | 测试会联系所选服务商，可能产生用量费用    |
+| Task                                     | Workflow                                                                 | Boundary                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------ |
+| Change Codex or Claude Code API settings | Edit Base URL, API key, and model in the GUI                             | Values must match your provider and protocol           |
+| Skip setup on an existing machine        | Select tools → **Configure API now**                                     | Skipped checks are not reported as passed              |
+| Set up a new machine                     | Environment check → reviewed installation → configuration → verification | Commands and changes require confirmation              |
+| Import a provider into CC Switch         | Review a masked import preview, then open CC Switch                      | Confirm and activate separately in CC Switch           |
+| Apply Codex config without CC Switch     | Expand manual setup → review → confirm apply                             | Backs up the existing file; not a lossless TOML merge  |
+| Diagnose API errors                      | Connection checks and actionable diagnosis                               | Tests contact the selected provider and may cost money |
 
-支持 Windows、macOS，提供简体中文和英文界面。保留自定义服务商，不强制使用 SeedRouter。工具内的模型预设不是可用性保证，应以服务商实时模型列表为准。
+This is a **desktop API configuration assistant**, not an LLM API service, reverse proxy, chat client, or replacement for CC Switch. It does not directly edit Claude Code settings or the CC Switch database.
 
-## 快速开始：四步配置 API
+## Quick start
 
-1. **准备工具**：从 [Releases](https://github.com/easyrouter/llm-api-tutorial/releases) 查看构建说明，或按下方命令运行当前源码。
-2. **选择入口**：已安装工具选择「直接配置 API」；首次使用选择「开始检查」。
-3. **填写并测试**：填写 API Key，确认 Base URL 和模型，再主动运行连接测试。
-4. **确认修改**：选择 CC Switch 导入，或展开 Codex 手动配置；完成后重新打开终端并验证。
+1. **Choose a version.** See [Releases](https://github.com/easyrouter/seedrouter-api-setup/releases) for existing builds, or run the current source using the development commands below.
+2. **Choose your path.** Select your tools. Use **Configure API now** if installed; use the full environment-check flow on a new machine.
+3. **Enter and test settings.** Supply the matching Base URL, API key, and model. Verify the destination before sending credentials.
+4. **Preview and confirm.** Import into CC Switch and activate there, or review and apply the Codex template. Restart the client and verify.
 
-完整步骤：[新手 API 配置指南](docs/QUICKSTART.md)。
+Detailed instructions: [API setup quick start](docs/en/QUICKSTART.md).
 
-### SeedRouter 的 Base URL 怎么填？
+## Base URL reference for SeedRouter
 
-| 客户端                   | Base URL                    | 协议               |
-| ------------------------ | --------------------------- | ------------------ |
-| Codex CLI / Codex 客户端 | `https://seedrouter.net/v1` | Responses          |
-| Claude Code              | `https://seedrouter.net`    | Anthropic Messages |
+| Client                    | Base URL                    | Protocol           |
+| ------------------------- | --------------------------- | ------------------ |
+| Codex CLI / Codex desktop | `https://seedrouter.net/v1` | Responses          |
+| Claude Code               | `https://seedrouter.net`    | Anthropic Messages |
 
-Claude Code 会追加 `/v1/messages`，不要把完整接口路径填进 Base URL。其他服务商可能有不同的路径前缀，优先遵循该服务商文档。
+Claude Code appends `/v1/messages`; do not paste a full request path into its Base URL. Other gateways may require different prefixes. Use the actual model ID available to your key, not an assumed model name or the bundled preset alone.
 
-## 配置教程与故障排查
+## Configuration guides
 
-- [Codex API 配置：自定义 Base URL、API Key 与模型](docs/guides/codex-api-config.md)
-- [Claude Code API 配置：Anthropic 网关与 CC Switch](docs/guides/claude-code-api-config.md)
-- [Base URL、API Key 和模型名分别是什么？](docs/guides/base-url-api-key.md)
-- [401、403、404、429 和连接失败排查](docs/TROUBLESHOOTING.md)
-- [密钥、剪贴板、备份与安全边界](SECURITY.md)
+| Question                                                     | Guide                                                                     |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------- |
+| How do I change the Codex API Base URL, key, or model?       | [Codex API configuration](docs/en/guides/codex-api-config.md)             |
+| How do I connect Claude Code to an Anthropic gateway?        | [Claude Code API configuration](docs/en/guides/claude-code-api-config.md) |
+| What is the difference between Base URL, API key, and model? | [API configuration fields explained](docs/en/guides/base-url-api-key.md)  |
+| Why do I get 401, 403, 404, 429, or a connection timeout?    | [API troubleshooting](docs/en/TROUBLESHOOTING.md)                         |
+| What does this project support, and where is the evidence?   | [Project facts and limitations](docs/PROJECT-FACTS.md)                    |
 
-## SeedRouter 与本项目的关系
+Chinese versions are linked from each guide and the [documentation index](docs/README.md).
 
-[SeedRouter](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-tutorial) 赞助了本项目，并预设了它的 API 地址。你可以去网站创建 API Key、查看模型和价格，也可以换成其他兼容的服务商。软件以 Apache-2.0 许可证开源。API 调用是否收费、怎么收费，由你选择的服务商决定。
+## API key safety
 
-[获取 SeedRouter API Key](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=llm-api-tutorial) · [接入文档](https://seedrouter.net/doc/)
+- No API keys in this assistant's persistent browser storage or telemetry.
+- Connection tests send credentials to the entered gateway and may incur provider charges.
+- Copying a generated configuration may put a key on the clipboard; history or sync may retain it.
+- Confirmed Codex apply or CC Switch import may store keys in target configuration files and backups.
+- Switching tool tabs clears the input state. It does not revoke keys or erase external copies.
+- No silent PATH or environment changes; repairs have a separate preview and confirmation.
 
-## 本地运行与开发
+Read [SECURITY](SECURITY.md) before sharing logs, screenshots, or configuration files.
 
-需要 Node.js ≥ 20、Rust stable 和对应系统的 Tauri 构建依赖。只想使用软件的用户不需要安装开发环境；请先查看下载页面的构建说明。
+## Frequently asked questions
+
+### Can I change Codex API settings without manually editing TOML?
+
+Yes. Use the graphical import workflow, or review and explicitly apply the generated Codex template. The direct-apply path backs up the old file, but does not promise to preserve every custom setting through an automatic merge.
+
+### Does the assistant directly modify Claude Code settings?
+
+No. It supplies configuration values and an import preview. CC Switch handles its own confirmed changes. The documentation also describes manual gateway configuration.
+
+### Do I have to use SeedRouter?
+
+No. SeedRouter is the sponsor and default preset. You can use another provider that supports the selected client's protocol, with that provider's endpoint, key, and model.
+
+### How is this different from CC Switch?
+
+SeedRouter API Setup focuses on guided onboarding, environment checks, configuration previews, and diagnosis. CC Switch is a separate provider-configuration manager. This assistant can hand an import to it; it does not claim CC Switch's capabilities as its own implementation.
+
+### Does a successful connection test mean every client feature works?
+
+No. It only proves that the tested request worked at that time. Model listing, Responses, Anthropic Messages, tool calling, and the user's complete workflow can have different requirements.
+
+### Is this an official OpenAI or Anthropic tool?
+
+No. It is an independent open-source project and does not imply endorsement by OpenAI or Anthropic.
+
+## SeedRouter sponsorship
+
+SeedRouter sponsors this project and provides its default API preset. You can create an API key and check models and pricing at https://seedrouter.net/, or use another compatible provider. The configuration tool is open source under Apache-2.0. Your provider sets the pricing for API usage, including connection tests.
+
+[Get a SeedRouter API key](https://seedrouter.net/?utm_source=github&utm_medium=readme&utm_campaign=seedrouter-api-setup) · [SeedRouter integration docs](https://seedrouter.net/doc/)
+
+## Development
+
+Node.js ≥ 20, stable Rust, and the platform's Tauri prerequisites are required. See [development setup](docs/DEVELOPMENT.md).
 
 ```bash
-git clone https://github.com/easyrouter/llm-api-tutorial.git
-cd llm-api-tutorial
+git clone https://github.com/easyrouter/seedrouter-api-setup.git
+cd seedrouter-api-setup
 npm ci
 npm run tauri dev
 ```
 
 ```bash
-npm run check       # 格式、类型、翻译、前端与 Rust 检查
-npm run docs:check  # 本地 Markdown 链接与文档结构
-npm run build      # 前端生产构建；不等于桌面安装包
+npm run check       # Formatting, docs, lint, types, i18n, frontend and Rust tests
+npm run docs:check  # Public documentation links, language navigation, and identity
+npm run build      # Frontend production build, not a desktop installer
 ```
 
-| 开发资料        | 入口                                 |
-| --------------- | ------------------------------------ |
-| 架构和 IPC 协议 | [ARCHITECTURE](docs/ARCHITECTURE.md) |
-| 开发环境        | [DEVELOPMENT](docs/DEVELOPMENT.md)   |
-| 贡献方式        | [CONTRIBUTING](CONTRIBUTING.md)      |
-| 架构决策        | [ADRs](docs/adr/)                    |
-| 发布与签名      | [RELEASE](docs/RELEASE.md)           |
-| 更新记录        | [CHANGELOG](CHANGELOG.md)            |
+[Architecture](docs/ARCHITECTURE.md) · [Contributing](CONTRIBUTING.md) · [ADRs](docs/adr/) · [Release and signing](docs/RELEASE.md) · [Changelog](CHANGELOG.md)
 
-## 反馈与参与
+## Feedback and license
 
-通过 [GitHub Issues](https://github.com/easyrouter/llm-api-tutorial/issues) 提交复现步骤，请勿上传 API Key、完整配置文件或含个人信息的日志。欢迎修正文档、补充测试和分享实际配置经验。
+Report reproducible setup issues with the [issue template](https://github.com/easyrouter/seedrouter-api-setup/issues/new/choose). Never include real API keys or unredacted configuration files.
 
-本项目不是 OpenAI 或 Anthropic 的官方客户端，不代表它们提供支持或背书。
-
-## 许可证
-
-[Apache License 2.0](LICENSE)。原项目归属与第三方声明见 [NOTICE](NOTICE)。
+Licensed under [Apache-2.0](LICENSE). Attribution and third-party notices are preserved in [NOTICE](NOTICE).

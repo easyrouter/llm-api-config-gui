@@ -5,6 +5,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning: [S
 
 ## [Unreleased]
 
+### Documentation and project identity
+
+- Rename the public repository to `seedrouter-api-setup`, make English the default README, and provide `README.zh-CN.md` for Simplified Chinese.
+- Add English task guides, bilingual documentation navigation, a source-linked project fact sheet, and checks for canonical repository links and language entry points.
+
+
 ### Added
 
 - Quick API setup for installed Codex and Claude Code clients, with editable endpoint and model fields, optional detailed controls, and a path back to environment checks.

@@ -1,6 +1,7 @@
 # 新手快速开始：修改 Codex 和 Claude Code 的 API 配置
 
-[返回首页](../README.md) · [常见错误](TROUBLESHOOTING.md) · [English overview](../README.en.md)
+[English](en/QUICKSTART.md)
+[返回首页](../README.zh-CN.md) · [常见错误](TROUBLESHOOTING.md) · [English overview](../README.md)
 
 ## 开始前准备什么？
 
@@ -8,7 +9,7 @@
 - 同一个服务商提供的 Base URL、API Key、模型名。
 - 若使用一键导入：先安装 CC Switch。没有安装时可回到「先检查环境」。
 
-使用 SeedRouter 时，可从 [官网](https://seedrouter.net/?utm_source=github&utm_medium=guide&utm_campaign=llm-api-tutorial) 创建 API Key 并查看模型。其他服务商的 Key 不能自动用于 SeedRouter，反之亦然。
+使用 SeedRouter 时，可从 [官网](https://seedrouter.net/?utm_source=github&utm_medium=guide&utm_campaign=seedrouter-api-setup) 创建 API Key 并查看模型。其他服务商的 Key 不能自动用于 SeedRouter，反之亦然。
 
 ## 已经装好工具，只想更换 API
 

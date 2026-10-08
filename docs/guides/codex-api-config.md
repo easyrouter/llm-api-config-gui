@@ -1,5 +1,6 @@
 # Codex API 配置：修改 Base URL、API Key 和模型
 
+[English](../en/guides/codex-api-config.md)
 [快速开始](../QUICKSTART.md) · [Claude Code 配置](claude-code-api-config.md) · [故障排查](../TROUBLESHOOTING.md)
 
 ## 需要填写哪些值？
@@ -11,7 +12,7 @@
 | Model    | 该 Key 实际可用的模型 ID    | 不要把显示名称当作模型 ID                    |
 | Protocol | Responses                   | 网关需支持客户端使用的协议与功能             |
 
-模型可用性和价格以 [SeedRouter 控制台入口](https://seedrouter.net/?utm_source=github&utm_medium=guide&utm_campaign=llm-api-tutorial) 为准，本文不固定推荐易变化的模型名。
+模型可用性和价格以 [SeedRouter 控制台入口](https://seedrouter.net/?utm_source=github&utm_medium=guide&utm_campaign=seedrouter-api-setup) 为准，本文不固定推荐易变化的模型名。
 
 ## 方式一：通过 CC Switch 导入
 

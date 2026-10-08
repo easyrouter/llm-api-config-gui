@@ -1,6 +1,7 @@
 # API 配置故障排查：401、403、404、429 与连接失败
 
-[返回首页](../README.md) · [快速开始](QUICKSTART.md) · [密钥安全](../SECURITY.md)
+[English](en/TROUBLESHOOTING.md)
+[返回首页](../README.zh-CN.md) · [快速开始](QUICKSTART.md) · [密钥安全](../SECURITY.md)
 
 先记录客户端、版本、操作系统、请求时间和脱敏后的状态码。不要把完整 API Key、配置文件、认证头或请求正文提交到公开 Issue。
 
@@ -31,4 +32,4 @@
 - 最少复现步骤、期望结果、实际结果。
 - 脱敏后的错误码；截图前检查 URL 参数、Key、账户和路径。
 
-[提交 GitHub Issue](https://github.com/easyrouter/llm-api-tutorial/issues/new/choose)。疑似凭据泄露先在服务商处撤销 Key，不要等待他人回复。
+[提交 GitHub Issue](https://github.com/easyrouter/seedrouter-api-setup/issues/new/choose)。疑似凭据泄露先在服务商处撤销 Key，不要等待他人回复。

@@ -1,5 +1,6 @@
 # Claude Code API 配置：Base URL、API Key 与 Anthropic 网关
 
+[English](../en/guides/claude-code-api-config.md)
 [快速开始](../QUICKSTART.md) · [Codex 配置](codex-api-config.md) · [故障排查](../TROUBLESHOOTING.md)
 
 ## 与 Codex 配置有什么不同？
